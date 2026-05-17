@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
   <base target="_top">
-  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</title>
 
@@ -298,8 +297,8 @@
     let myPieChart = null;
     let myBarChart = null;
     let currentManageItems = [];
-    let html5Qrcode = null; 
-    let isScanning = false; 
+    let html5Qrcode = null; // ตัวแปรสำหรับคลาสสแกนเนอร์
+    let isScanning = false; // ตัวแปรสถานะตรวจสอบกล้อง
     window.allItems = []; 
     
     let dataCacheFlags = { items: true, return: true, history: true, stats: true };
@@ -363,14 +362,7 @@
 
     function loadItems() { 
       showLoader(); 
-      // หมายเหตุ: การใช้งานจริงต้องเรียก API หรือ mock data เข้ามาทดแทน google.script.run
-      // ตัวอย่างนี้เป็นการรักษาโครงสร้างโค้ดเดิมไว้
-      if (typeof google !== 'undefined' && google.script) {
-          google.script.run.withSuccessHandler(displayItems).withFailureHandler(e => {hideLoader();showAlert(e.message||e,'error')}).getItems(); 
-      } else {
-          hideLoader();
-          console.log("กรุณาเชื่อมต่อกับ Backend ของคุณ");
-      }
+      google.script.run.withSuccessHandler(displayItems).withFailureHandler(e => {hideLoader();showAlert(e.message||e,'error')}).getItems(); 
     }
 
     function displayItems(items) {
@@ -445,54 +437,131 @@
     document.getElementById('borrow-form').addEventListener('submit', (e) => {
       e.preventDefault(); showLoader();
       const payload = { borrowerName: document.getElementById('borrower-name').value, returnDate: document.getElementById('return-date').value, items: cart.map(c => ({ id: c.id, qty: c.requestQty })) };
-      if (typeof google !== 'undefined' && google.script) {
-          google.script.run.withSuccessHandler((res) => { 
-              hideLoader(); 
-              if(res.success) { 
-                  showAlert('บันทึกการยืมเรียบร้อย!'); hideModal('borrow-modal'); cart = []; updateCartUI(); markDataStale(); 
-                  if(document.getElementById('items-view').classList.contains('active')) loadItems(); 
-              } else { showAlert(res.error, 'error'); } 
-          }).withFailureHandler(e => {hideLoader();showAlert(e.message||e,'error')}).processBorrowLogic(payload);
-      }
+      google.script.run.withSuccessHandler((res) => { 
+          hideLoader(); 
+          if(res.success) { 
+              showAlert('บันทึกการยืมเรียบร้อย!'); hideModal('borrow-modal'); cart = []; updateCartUI(); markDataStale(); 
+              if(document.getElementById('items-view').classList.contains('active')) loadItems(); 
+          } else { showAlert(res.error, 'error'); } 
+      }).withFailureHandler(e => {hideLoader();showAlert(e.message||e,'error')}).processBorrowLogic(payload);
     });
 
     function loadReturnItems() {
-      // โค้ดเดิมสำหรับดึงข้อมูลการคืน
+      showLoader();
+      if (!window.allItems || window.allItems.length === 0) { google.script.run.withSuccessHandler(items => { window.allItems = items || []; fetchBorrowedItemsForReturn(); }).getItems(); } 
+      else { fetchBorrowedItemsForReturn(); }
     }
     
     function fetchBorrowedItemsForReturn() {
-      // โค้ดเดิมสำหรับดึงข้อมูลการคืน
+      google.script.run.withSuccessHandler((data) => { 
+          allBorrowedItems = data || []; dataCacheFlags.return = false; document.getElementById('return-search-input').value = ''; renderReturnTable(allBorrowedItems); hideLoader(); 
+      }).withFailureHandler((e) => { hideLoader(); showAlert('เกิดข้อผิดพลาดในการโหลด: ' + e.message, 'error'); }).searchBorrowedItems('');
     }
 
     function renderReturnTable(items) {
-      // โค้ดเดิมสำหรับเรนเดอร์ตาราง
+      const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
+      if(!items || items.length === 0) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">ไม่มีรายการที่ต้องคืน</td></tr>`; return; }
+      
+      items.forEach(item => {
+        const qty = item.borrowQty || 1; 
+        let systemQty = 1;
+        if (window.allItems) { const sysItem = window.allItems.find(i => i.name === item.itemName); if (sysItem) { systemQty = sysItem.totalQuantity; } }
+        systemQty = item.totalQuantity || systemQty; 
+        
+        tbody.innerHTML += `<tr>
+          <td style="text-align: center;"><button type="button" class="btn btn-primary return-toggle-btn" data-id="${item.historyId}" data-selected="false" data-system-qty="${systemQty}" onclick="toggleReturnBtn(this)" style="font-size: 12px; padding: 6px 10px;">กดเลือก</button></td>
+          <td>${item.historyId}</td>
+          <td>${item.itemName}</td>
+          <td>${item.borrowerName}</td>
+          <td style="text-align: center; font-weight: bold;">${qty}</td>
+          <td style="text-align: center;" class="qty-input-group"><input type="number" inputmode="numeric" pattern="[0-9]*" id="ret-good-${item.historyId}" value="${qty}" min="0" max="${qty}" readonly onchange="autoCalcConsumed(${item.historyId}, ${qty})"></td>
+          <td style="text-align: center;" class="qty-input-group"><input type="number" inputmode="numeric" pattern="[0-9]*" id="ret-consumed-${item.historyId}" value="0" min="0" max="${qty}" readonly onchange="autoCalcGood(${item.historyId}, ${qty})"></td>
+          <td>${item.returnDate || '-'}</td>
+        </tr>`;
+      });
+      updateReturnCount();
     }
 
     function toggleReturnBtn(btn) {
-       // โค้ดเดิมสำหรับสลับปุ่ม
+        const id = btn.dataset.id; const isSelected = btn.dataset.selected === 'true'; const systemQty = parseInt(btn.dataset.systemQty) || 1;
+        const goodInput = document.getElementById(`ret-good-${id}`); const consumedInput = document.getElementById(`ret-consumed-${id}`);
+        if (isSelected) {
+            btn.dataset.selected = 'false'; btn.className = 'btn btn-primary return-toggle-btn'; btn.textContent = 'กดเลือก';
+            goodInput.readOnly = true; consumedInput.readOnly = true; goodInput.classList.remove('highlight-input'); consumedInput.classList.remove('highlight-input'); goodInput.style.backgroundColor = ''; consumedInput.style.backgroundColor = ''; goodInput.style.cursor = ''; consumedInput.style.cursor = '';
+        } else {
+            btn.dataset.selected = 'true'; btn.className = 'btn btn-secondary return-toggle-btn selected'; btn.textContent = 'เลือกแล้ว';
+            if (systemQty > 1) { goodInput.readOnly = false; consumedInput.readOnly = false; goodInput.style.backgroundColor = ''; consumedInput.style.backgroundColor = ''; goodInput.style.cursor = 'text'; consumedInput.style.cursor = 'text'; } 
+            else { goodInput.readOnly = true; consumedInput.readOnly = true; goodInput.style.backgroundColor = '#e9ecef'; consumedInput.style.backgroundColor = '#e9ecef'; goodInput.style.cursor = 'not-allowed'; consumedInput.style.cursor = 'not-allowed'; }
+            goodInput.classList.add('highlight-input'); consumedInput.classList.add('highlight-input'); goodInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        updateReturnCount();
     }
 
     function autoCalcConsumed(id, total) { const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); let v = parseInt(g.value) || 0; if (v > total) v = total; if (v < 0) v = 0; g.value = v; c.value = total - v; }
     function autoCalcGood(id, total) { const c = document.getElementById(`ret-consumed-${id}`); const g = document.getElementById(`ret-good-${id}`); let v = parseInt(c.value) || 0; if (v > total) v = total; if (v < 0) v = 0; c.value = v; g.value = total - v; }
     
     function updateReturnCount() {
-       // โค้ดเดิมอัปเดตยอดคืน
+        const selected = document.querySelectorAll('.return-toggle-btn[data-selected="true"]').length;
+        const btn = document.getElementById('return-selected-btn');
+        document.getElementById('return-count').innerText = selected;
+        if(selected > 0) { btn.disabled = false; btn.style.opacity = 1; btn.style.cursor = 'pointer'; } 
+        else { btn.disabled = true; btn.style.opacity = 0.5; btn.style.cursor = 'not-allowed'; }
     }
 
     function loadHistory() {
-       // โค้ดเดิมดึงประวัติ
+      showLoader();
+      google.script.run.withSuccessHandler(renderHistoryTable).withFailureHandler(e => {hideLoader(); showAlert(e.message||e, 'error');}).getHistory();
     }
 
     function renderHistoryTable(history) {
-      // โค้ดเดิมเรนเดอร์ประวัติ
+      dataCacheFlags.history = false; hideLoader(); const container = document.getElementById('history-table-container');
+      if(!history || history.length === 0 || history.error) { container.innerHTML = '<p style="text-align:center; padding: 20px;">ไม่มีประวัติการทำรายการ</p>'; return; }
+      let html = `<table><thead><tr><th>รหัส</th><th>ผู้ยืม</th><th>ชื่ออุปกรณ์</th><th>จำนวนยืม</th><th>วันที่ยืม</th><th>กำหนดคืน</th><th>สถานะ</th><th>คืนสภาพดี</th><th>ใช้ไป</th><th>วันที่คืนจริง</th><th>ผู้คืน</th></tr></thead><tbody id="hist-body">`;
+      history.forEach(h => {
+         let statusBadge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
+         html += `<tr><td>${h.historyId}</td><td>${h.borrowerName}</td><td>${h.itemName}</td><td style="text-align:center; font-weight:bold;">${h.borrowQty}</td><td>${h.borrowDate}</td><td>${h.returnDate || '-'}</td><td>${statusBadge}</td><td style="text-align:center;">${h.status==='returned' ? h.returnedQty : '-'}</td><td style="text-align:center; color: var(--danger);">${h.status==='returned' ? h.consumedQty : '-'}</td><td>${h.actualReturnDate || '-'}</td><td>${h.returnerName || '-'}</td></tr>`;
+      });
+      html += `</tbody></table>`; container.innerHTML = html;
     }
 
     function loadStats() {
-      // โค้ดเดิมดึงสถิติ
+      showLoader(); google.script.run.withSuccessHandler(renderStats).withFailureHandler(e => {hideLoader(); showAlert(e.message||e, 'error');}).getStatistics();
     }
 
     function renderStats(stats) {
-      // โค้ดเดิมเรนเดอร์สถิติ
+      dataCacheFlags.stats = false; hideLoader(); if(stats.error) { showAlert(stats.error, 'error'); return; }
+      
+      document.getElementById('stats-grid').innerHTML = `
+        <div class="stat-card"><div class="value">${stats.totalItems}</div><div class="label">ทั้งหมด (ชิ้น)</div></div>
+        <div class="stat-card"><div class="value" style="color:var(--success);">${stats.availableItems}</div><div class="label">พร้อมใช้งาน (ชิ้น)</div></div>
+        <div class="stat-card"><div class="value" style="color:var(--warning);">${stats.borrowedItems}</div><div class="label">กำลังถูกยืม (ชิ้น)</div></div>
+        <div class="stat-card"><div class="value" style="color:var(--danger);">${stats.totalConsumed}</div><div class="label">สิ้นเปลือง (ชิ้น)</div></div>
+        <div class="stat-card"><div class="value" style="color:#8b5cf6;">${stats.totalBorrows}</div><div class="label">ประวัติ (ครั้ง)</div></div>`;
+
+      const tbody = document.getElementById('usage-stats-body'); tbody.innerHTML = '';
+      if(stats.itemUsageStats && stats.itemUsageStats.length > 0) {
+         stats.itemUsageStats.forEach(item => { 
+             tbody.innerHTML += `<tr>
+                 <td>${item.name}</td>
+                 <td style="text-align:center; font-weight:bold;">${item.initialTotal}</td>
+                 <td style="text-align:center; color:var(--danger); font-weight:bold;">${item.consumed}</td>
+                 <td style="text-align:center; color:#8b5cf6; font-weight:bold;">${item.currentTotal}</td>
+                 <td style="text-align:center; color:var(--warning); font-weight:bold;">${item.borrowed}</td>
+                 <td style="text-align:center; color:var(--success); font-weight:bold;">${item.available}</td>
+                 <td style="text-align:center; color:#6366f1; font-weight:bold;">${item.borrowTimes}</td>
+                 <td style="text-align:center; color:#14b8a6; font-weight:bold;">${item.returnTimes}</td>
+             </tr>`; 
+         });
+      } else { 
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">ไม่มีข้อมูลสถิติรายอุปกรณ์</td></tr>'; 
+      }
+
+      if(myPieChart) myPieChart.destroy(); if(myBarChart) myBarChart.destroy();
+      const ctxPie = document.getElementById('statusPieChart').getContext('2d');
+      myPieChart = new Chart(ctxPie, { type: 'doughnut', data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems, stats.borrowedItems, stats.totalConsumed], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] } });
+
+      const topItems = stats.mostBorrowedItems.slice(0, 5); const ctxBar = document.getElementById('topItemsBarChart').getContext('2d');
+      myBarChart = new Chart(ctxBar, { type: 'bar', data: { labels: topItems.map(i => i.name), datasets: [{ label: 'จำนวนครั้งที่ถูกยืม', data: topItems.map(i => i.count), backgroundColor: '#3b82f6' }] }, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } });
     }
 
     document.getElementById('show-manage-modal-btn').addEventListener('click', () => {
@@ -507,11 +576,17 @@
     });
 
     function loadManageItems() {
-       // โค้ดเดิมจัดการของ
+       showLoader(); google.script.run.withSuccessHandler(res => { currentManageItems = res; renderManageItemsTable(); hideLoader(); }).withFailureHandler(e => {hideLoader(); showAlert(e.message||e, 'error');}).getItems();
     }
 
     function renderManageItemsTable() {
-       // โค้ดเดิมตารางจัดการ
+        const container = document.getElementById('manage-items-table-container');
+        if(!currentManageItems || currentManageItems.length===0 || currentManageItems.error) { container.innerHTML = '<p style="text-align:center; padding: 20px;">ไม่มีอุปกรณ์</p>'; return; }
+        let html = `<table><thead><tr><th>รูป</th><th>ชื่ออุปกรณ์</th><th>คำอธิบาย</th><th>ตั้งต้น</th><th>พร้อมยืม</th><th>จัดการ</th></tr></thead><tbody>`;
+        currentManageItems.forEach(item => {
+           html += `<tr><td style="text-align:center;"><img src="${item.image}" style="width:30px; height:30px; object-fit:contain; border:1px solid #ccc; border-radius:4px;"></td><td>${item.name}</td><td>${item.description}</td><td style="text-align:center; font-weight:bold;">${item.totalQuantity}</td><td style="text-align:center; font-weight:bold; color:var(--success);">${item.availableQuantity}</td><td style="white-space:nowrap;"><button class="btn btn-edit" onclick="editItem('${item.id}')">แก้ไข</button><button class="btn btn-delete" onclick="deleteItem('${item.id}')">ลบ</button></td></tr>`;
+        });
+        html += `</tbody></table>`; container.innerHTML = html;
     }
 
     document.getElementById('open-add-new-item-form').addEventListener('click', () => {
@@ -519,11 +594,17 @@
     });
 
     function editItem(id) {
-       // โค้ดเดิมแก้ไขของ
+        const item = currentManageItems.find(i => i.id == id); if(!item) return;
+        document.getElementById('item-id').value = item.id; document.getElementById('item-name').value = item.name; document.getElementById('item-description').value = item.description; document.getElementById('item-quantity').value = item.totalQuantity;
+        const preview = document.getElementById('image-preview'); preview.src = item.image; preview.style.display = 'block'; document.getElementById('item-image-base64').value = item.image;
+        document.getElementById('item-form-title').textContent = 'แก้ไขอุปกรณ์'; hideModal('manage-items-modal'); showModal('item-form-modal');
     }
 
     function deleteItem(id) {
-       // โค้ดเดิมลบของ
+        Swal.fire({ title: 'ยืนยันการลบ?', text: "ต้องการลบใช่หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'ลบเลย!', cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) { showLoader(); google.script.run.withSuccessHandler(res => { hideLoader(); if(res.success) { showAlert('ลบสำเร็จ!'); markDataStale(); loadManageItems(); if(document.getElementById('items-view').classList.contains('active')) loadItems(); } else { showAlert(res.error, 'error'); } }).withFailureHandler(e => {hideLoader(); showAlert(e.message||e, 'error');}).deleteItem(id); }
+        });
     }
 
     document.getElementById('item-image-upload').addEventListener('change', function(e) {
@@ -533,8 +614,11 @@
     });
 
     document.getElementById('item-form').addEventListener('submit', function(e) {
-        e.preventDefault(); 
-        // โค้ดบันทึกฟอร์ม
+        e.preventDefault(); const id = document.getElementById('item-id').value;
+        const payload = { id: id || null, name: document.getElementById('item-name').value, description: document.getElementById('item-description').value, quantity: document.getElementById('item-quantity').value, image: document.getElementById('item-image-base64').value };
+        showLoader();
+        if(id) { google.script.run.withSuccessHandler(res => { hideLoader(); if(res.success) { showAlert('แก้ไขข้อมูลสำเร็จ!'); hideModal('item-form-modal'); showModal('manage-items-modal'); markDataStale(); loadManageItems(); if(document.getElementById('items-view').classList.contains('active')) loadItems(); } else { showAlert(res.error, 'error'); } }).withFailureHandler(e => {hideLoader(); showAlert(e.message||e, 'error');}).updateItem(payload); } 
+        else { google.script.run.withSuccessHandler(res => { hideLoader(); if(res.success) { showAlert('เพิ่มอุปกรณ์สำเร็จ!'); hideModal('item-form-modal'); showModal('manage-items-modal'); markDataStale(); loadManageItems(); if(document.getElementById('items-view').classList.contains('active')) loadItems(); } else { showAlert(res.error, 'error'); } }).withFailureHandler(e => {hideLoader(); showAlert(e.message||e, 'error');}).addItem(payload); }
     });
 
     /* =========================================================
@@ -545,18 +629,29 @@
       html5Qrcode = new Html5Qrcode("qr-reader");
       const config = { fps: 10, qrbox: { width: 250, height: 250 } };
       
+      // สั่งเปิดกล้องโดยเลือกเลนส์กล้องหลัง (facingMode: "environment")
       html5Qrcode.start(
         { facingMode: "environment" }, 
         config,
         (decodedText) => {
+          // เมื่อสแกนเจอข้อความสำเร็จ
           document.getElementById('search-input').value = decodedText;
+          // สั่งจำลองอีเวนต์กรอกข้อมูลเพื่อให้ตารางคัดกรองข้อมูลทันที
           document.getElementById('search-input').dispatchEvent(new Event('input'));
           
-          stopScanner(); 
+          stopScanner(); // สแกนเจอแล้วให้ปิดกล้องทันทีเพื่อประหยัดแบตเตอรี่
           
-          Swal.fire({ icon: 'success', title: 'สแกนสำเร็จ!', text: 'ค้นหาด้วยคำว่า: ' + decodedText, timer: 1500, showConfirmButton: false });
+          Swal.fire({ 
+            icon: 'success', 
+            title: 'สแกนสำเร็จ!', 
+            text: 'ค้นหาด้วยคำว่า: ' + decodedText, 
+            timer: 1500, 
+            showConfirmButton: false 
+          });
         },
-        (errorMessage) => { }
+        (errorMessage) => {
+          // ปล่อยข้าม เพื่อให้ตัวแสกนทำงานจับภาพต่อไปเรื่อยๆ จนกว่าจะเจอโค้ดที่ถูกต้อง
+        }
       ).then(() => {
         isScanning = true;
       }).catch(err => {
@@ -581,6 +676,7 @@
       }
     }
 
+    // ลงทะเบียนปุ่มกดปิดกล้อง
     document.getElementById('stop-qr-btn').addEventListener('click', stopScanner);
     document.getElementById('close-qr-modal-btn').addEventListener('click', stopScanner);
   </script>
