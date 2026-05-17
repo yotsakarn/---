@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #007bff;
+      --secondary: #6c757d;
+      --success: #28a745;
+      --danger: #dc3545;
+      --dark-gray: #343a40;
+      --light-gray: #f8f9fa;
+    }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #f4f6f9; }
+    header { background: white; padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+    .nav-tabs { display: flex; gap: 10px; }
+    .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: var(--secondary); color: white; }
+    .nav-btn { background: none; border: none; padding: 10px 15px; cursor: pointer; font-size: 16px; }
+    .nav-btn.active { border-bottom: 3px solid var(--primary); color: var(--primary); font-weight: bold; }
+    .container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .view { display: none; }
+    .view.active { display: block; }
+    .search-bar { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 15px; }
+    .search-bar input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+    #items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+    .item-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+    .item-card img { width: 100%; height: 180px; object-fit: cover; background: #eee; }
+    .item-card-content { padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .item-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
+    .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; color: white; }
+    .status-available { background: var(--success); }
+    .table-container { background: white; border-radius: 8px; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 15px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 12px; border-bottom: 1px solid #eee; }
+    th { background: #fafafa; }
+    #stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .stat-card { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .stat-card .value { font-size: 2rem; font-weight: bold; }
+    #cart-container { position: fixed; right: -350px; top: 0; width: 320px; height: 100%; background: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); transition: 0.3s; z-index: 1000; display: flex; flex-direction: column; }
+    #cart-container.open { right: 0; }
+    #cart-header { padding: 20px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; font-weight: bold; border-bottom: 1px solid #eee; }
+    #cart-items { padding: 20px; flex: 1; overflow-y: auto; }
+    #cart-footer { padding: 20px; border-top: 1px solid #eee; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; }
+    .modal-content { background: white; margin: 10% auto; padding: 20px; width: 80%; max-width: 800px; border-radius: 8px; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; margin-bottom: 15px; }
+    .close-btn { font-size: 24px; cursor: pointer; }
+    /* สไตล์ตัว Loading บังหน้าจอ */
+    #loader-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; }
+    .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div id="loader-overlay">
+    <div class="spinner"></div>
+    <p style="margin-top:15px; font-weight:bold; color:var(--dark-gray);">กำลังดึงข้อมูลจากระบบ...</p>
+  </div>
+
+  <header>
+    <h2>Medical Borrow System</h2>
+    <div class="nav-tabs">
+      <button class="nav-btn active" data-view="items-view">รายการอุปกรณ์</button>
+      <button class="nav-btn" data-view="return-view">รายการที่กำลังยืม</button>
+      <button class="nav-btn" data-view="history-view">ประวัติการยืม-คืน</button>
+      <button class="nav-btn" data-view="stats-view">แดชบอร์ด</button>
+      <button class="btn btn-secondary" id="show-manage-modal-btn">จัดการคลัง</button>
+    </div>
+  </header>
+
+  <main class="container">
+    
+    <section id="items-view" class="view active">
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="🔍 ค้นหาชื่ออุปกรณ์ หรือเวชภัณฑ์...">
+        <button class="btn btn-primary" id="open-cart-btn">ตะกร้า (0)</button>
+      </div>
+      <div id="items-grid">
+        </div>
+    </section>
+
+    <section id="return-view" class="view">
+      <h2>รายการอุปกรณ์ที่กำลังถูกยืม</h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ผู้ยืม</th>
+              <th>รายการอุปกรณ์</th>
+              <th>วันที่ยืม</th>
+              <th>กำหนดคืน</th>
+              <th>สถานะ</th>
+              <th>การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="return-table-body">
+            <tr>
+              <td colspan="6" style="text-align:center;">กำลังโหลดข้อมูล...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="history-view" class="view">
+      <h2>ประวัติการยืม-คืนทั้งหมด</h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>วันที่-เวลา</th>
+              <th>ประเภท</th>
+              <th>ผู้ทำรายการ</th>
+              <th>รายการ</th>
+              <th>จำนวน</th>
+              <th>หมายเหตุ</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+            <tr>
+              <td colspan="6" style="text-align:center;">กำลังโหลดข้อมูล...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="stats-view" class="view">
+      <h2>แดชบอร์ดและสถิติการใช้งาน</h2>
+      <div id="stats-grid" style="margin-bottom: 20px;">
+        <div class="stat-card">
+          <div class="value" id="stat-total-items">0</div>
+          <div class="label">อุปกรณ์ทั้งหมด</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="stat-borrowed-items" style="color: var(--danger);">0</div>
+          <div class="label">กำลังถูกยืม</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="stat-available-items" style="color: var(--success);">0</div>
+          <div class="label">พร้อมใช้งาน</div>
+        </div>
+      </div>
+      <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <canvas id="borrowChart" width="400" height="150"></canvas>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="cart-container">
+    <div id="cart-header">
+      <span>รายการยืมอุปกรณ์</span>
+      <button id="close-cart-btn" style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
+    </div>
+    <div id="cart-items">
+      <p style="text-align: center; color: var(--dark-gray); padding-top: 20px;">ไม่มีสินค้าในตะกร้า</p>
+    </div>
+    <div id="cart-footer">
+      <button class="btn btn-primary" style="width: 100%; padding: 12px;" id="checkout-btn" disabled>ยืนยันการยืมอุปกรณ์</button>
+    </div>
+  </div>
+
+  <div id="manage-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>คลังอุปกรณ์และเวชภัณฑ์</h2>
+        <span class="close-btn" id="close-manage-modal-btn">&times;</span>
+      </div>
+      <div>
+        <button class="btn btn-secondary" style="margin-bottom: 10px;">+ เพิ่มอุปกรณ์ใหม่</button>
+      </div>
+      <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>รูปภาพ</th>
+              <th>ชื่ออุปกรณ์</th>
+              <th>จำนวนทั้งหมด</th>
+              <th>คงเหลือ</th>
+              <th>การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="manage-table-body">
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 🔗 ลิงก์เชื่อมต่อไปยังหลังบ้าน Google Sheets ของคุณ
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzNp3PG-2gADMw5WfFcwrQ0vAcwjnoBR4pzSwTBWrzZ8sgXz_m5f23T5oA-DhWVzRuwpA/exec";
+    let allItems = [];
+
+    document.addEventListener("DOMContentLoaded", function() {
+      
+      // 1. ระบบสลับหน้าจอ (Tab Switching)
+      const navButtons = document.querySelectorAll(".nav-btn:not(#show-manage-modal-btn)");
+      const views = document.querySelectorAll(".view");
+
+      navButtons.forEach(btn => {
+        btn.addEventListener("click", function() {
+          navButtons.forEach(b => b.classList.remove("active"));
+          views.forEach(v => v.classList.remove("active"));
+
+          this.classList.add("active");
+          const targetView = this.getAttribute("data-view");
+          document.getElementById(targetView).classList.add("active");
+          
+          // โหลดข้อมูลตามหน้าเจาะจงเมื่อกดสลับแท็บ
+          if(targetView === 'return-view') loadBorrowedData();
+          if(targetView === 'history-view') loadHistoryData();
+        });
+      });
+
+      // 2. ระบบเปิด-ปิด ตะกร้าสินค้า (Sidebar Cart)
+      const cartContainer = document.getElementById("cart-container");
+      document.getElementById("open-cart-btn").addEventListener("click", () => cartContainer.classList.add("open"));
+      document.getElementById("close-cart-btn").addEventListener("click", () => cartContainer.classList.remove("open"));
+
+      // 3. ระบบเปิด-ปิด หน้าต่างจัดการอุปกรณ์ (Manage Modal)
+      const manageModal = document.getElementById("manage-modal");
+      document.getElementById("show-manage-modal-btn").addEventListener("click", () => {
+        manageModal.style.display = "block";
+        renderManageTable();
+      });
+      document.getElementById("close-manage-modal-btn").addEventListener("click", () => manageModal.style.display = "none");
+
+      window.addEventListener("click", (event) => {
+        if (event.target === manageModal) {
+          manageModal.style.display = "none";
+        }
+      });
+
+      // 4. เริ่มต้นระบบ: ดึงข้อมูลอุปกรณ์ทันทีเมื่อเปิดหน้าเว็บ
+      fetchData();
+    });
+
+    // --- ฟังก์ชันการทำงานร่วมกับเบื้องหลัง (Fetch API) ---
+
+    function showLoader() { document.getElementById("loader-overlay").style.display = "flex"; }
+    function hideLoader() { document.getElementById("loader-overlay").style.display = "none"; }
+
+    // ฟังก์ชันดึงข้อมูลหลัก (รายการอุปกรณ์)
+    function fetchData() {
+      showLoader();
+      fetch(WEB_APP_URL + "?action=getItems")
+        .then(res => res.json())
+        .then(data => {
+          allItems = data;
+          renderItemCards(data);
+          updateDashboardStats(data);
+          hideLoader();
+        })
+        .catch(err => {
+          console.error("Error fetching items:", err);
+          alert("ไม่สามารถดึงข้อมูลจากฐานข้อมูลได้ กรุณาตรวจสอบการตั้งค่าของท่าน");
+          hideLoader();
+        });
+    }
+
+    // ฟังก์ชันวาดการ์ดอุปกรณ์ในหน้าแรก
+    function renderItemCards(items) {
+      const grid = document.getElementById("items-grid");
+      grid.innerHTML = "";
+      if(items.length === 0) {
+        grid.innerHTML = "<p>ไม่พบรายการอุปกรณ์</p>";
+        return;
+      }
+      items.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "item-card";
+        card.innerHTML = `
+          <img src="${item.image || 'https://via.placeholder.com/150?text=No+Image'}" alt="${item.name}">
+          <div class="item-card-content">
+            <h3>${item.name}</h3>
+            <p>${item.description || 'ไม่มีรายละเอียดการใช้งาน'}</p>
+            <div class="item-card-footer">
+              <span class="status-badge status-available">ว่าง (${item.available})</span>
+              <button class="btn btn-primary" ${item.available <= 0 ? 'disabled' : ''}>เพิ่มลงตะกร้า</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // ฟังก์ชันวาดตารางในหน้าจัดการคลัง
+    function renderManageTable() {
+      const tbody = document.getElementById("manage-table-body");
+      tbody.innerHTML = "";
+      allItems.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><img src="${item.image || 'https://via.placeholder.com/50'}" width="50" height="50" style="object-fit:cover; border-radius:4px;"></td>
+          <td>${item.name}</td>
+          <td>${item.total}</td>
+          <td>${item.available}</td>
+          <td><button class="btn btn-secondary" style="padding:4px 8px; font-size:12px;">แก้ไข</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ฟังก์ชันอัปเดตตัวเลขสถิติต่างๆ ในแดชบอร์ด
+    function updateDashboardStats(items) {
+      let total = 0, available = 0, borrowed = 0;
+      items.forEach(item => {
+        total += Number(item.total || 0);
+        available += Number(item.available || 0);
+      });
+      borrowed = total - available;
+
+      document.getElementById("stat-total-items").innerText = total;
+      document.getElementById("stat-borrowed-items").innerText = borrowed;
+      document.getElementById("stat-available-items").innerText = available;
+    }
+
+    // ฟังก์ชันดึงข้อมูลคนยืมค้างส่งคืน
+    function loadBorrowedData() {
+      const tbody = document.getElementById("return-table-body");
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">กำลังโหลด...</td></tr>`;
+      fetch(WEB_APP_URL + "?action=getBorrowed")
+        .then(res => res.json())
+        .then(data => {
+          tbody.innerHTML = "";
+          if(data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">ไม่มีข้อมูลการยืมในขณะนี้</td></tr>`;
+            return;
+          }
+          data.forEach(row => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${row.borrower}</td><td>${row.item}</td><td>${row.date}</td><td>${row.dueDate}</td><td><span class="status-badge" style="background:var(--danger)">กำลังยืม</span></td><td><button class="btn btn-primary" style="padding:4px 8px; font-size:12px;">รับคืน</button></td>`;
+            tbody.appendChild(tr);
+          });
+        }).catch(() => tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger)">ดึงข้อมูลล้มเหลว</td></tr>`);
+    }
+
+    // ฟังก์ชันดึงประวัติการยืม-คืนทั้งหมด
+    function loadHistoryData() {
+      const tbody = document.getElementById("history-table-body");
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">กำลังโหลด...</td></tr>`;
+      fetch(WEB_APP_URL + "?action=getHistory")
+        .then(res => res.json())
+        .then(data => {
+          tbody.innerHTML = "";
+          if(data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">ยังไม่มีประวัติในระบบ</td></tr>`;
+            return;
+          }
+          data.forEach(row => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${row.timestamp}</td><td>${row.type}</td><td>${row.user}</td><td>${row.item}</td><td>${row.qty}</td><td>${row.note || '-'}</td>`;
+            tbody.appendChild(tr);
+          });
+        }).catch(() => tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger)">ดึงข้อมูลล้มเหลว</td></tr>`);
+    }
+
+    // ระบบค้นหาอุปกรณ์แบบ Real-time
+    document.getElementById("search-input").addEventListener("input", function(e) {
+      const keyword = e.target.value.toLowerCase();
+      const filtered = allItems.filter(item => item.name.toLowerCase().includes(keyword) || (item.description && item.description.toLowerCase().includes(keyword)));
+      renderItemCards(filtered);
+    });
+  </script>
+</body>
+</html>
