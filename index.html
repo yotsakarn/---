@@ -21,9 +21,8 @@
     /* 3. ส่วนของการจัดการ JavaScript และเชื่อมต่อ API */
     /* ========================================== */
 
-    // ⚠️ อย่าลืมนำ URL จาก Google Apps Script (ที่ลงท้ายด้วย /exec) มาใส่ตรงนี้ครับ
-    const API_URL = "https://script.google.com/macros/s/// ⚠️ อย่าลืมนำ URL จาก Google Apps Script (ที่ลงท้ายด้วย /exec) มาใส่ตรงนี้ครับ
-const API_URL = "https://script.google.com/macros/s/AKfycbzNp3PG-2gADMw5WfFcwrQ0vAcwjnoBR4pzSwTBWrzZ8sgXz_m5f23T5oA-DhWVzRuwpA/exec";/exec"; 
+   // ⚠️ ลิงก์เชื่อมต่อ Google Apps Script API
+    const API_URL = "https://script.google.com/macros/s/AKfycbzNp3PG-2gADMw5WfFcwrQ0vAcwjnoBR4pzSwTBWrzZ8sgXz_m5f23T5oA-DhWVzRuwpA/exec";
 
     // ฟังก์ชันหลักสำหรับคุยกับ Google Apps Script API
     async function callAPI(action, payload = {}) {
