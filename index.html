@@ -1,250 +1,4 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <base target="_top">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
-
-    <style>
-        :root {
-            --primary-color: #4a69bd;
-            --secondary-color: #6a89cc;
-            --light-gray: #f3f4f6;
-            --dark-gray: #6b7280;
-            --text-color: #1f2937;
-            --white: #ffffff;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-        }
-        * { box-sizing: border-box; font-family: 'Prompt', sans-serif; margin: 0; padding: 0; }
-        body { background-color: #f8fafc; color: var(--text-color); }
-        .header { background: linear-gradient(135deg, #4a69bd, #6a89cc); color: white; text-align: center; padding: 20px; font-size: 24px; font-weight: bold; }
-        .nav-container { display: flex; justify-content: center; gap: 10px; padding: 15px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .nav-btn { padding: 10px 20px; border: 1px solid #e2e8f0; background: white; border-radius: 6px; cursor: pointer; color: var(--dark-gray); font-weight: bold; transition: all 0.2s; }
-        .nav-btn.active, .nav-btn:hover { background: var(--primary-color); color: white; border-color: var(--primary-color); }
-        .main-content { max-width: 1200px; margin: 20px auto; padding: 0 15px; }
-        .view { display: none; }
-        .view.active { display: block; }
-        
-        /* Loader สปินเนอร์หมุน ๆ */
-        .loader-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        .loader { border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        /* คอนโทรลและการค้นหา */
-        .search-bar-container { display: flex; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .search-input { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; }
-        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-primary { background: #8b5cf6; color: white; }
-        .btn-cart { background: var(--secondary-color); color: white; }
-        
-        /* การแสดงผลข้อมูลตารางและกริด */
-        .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-        .item-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; border: 1px solid #e2e8f0; }
-        .item-card img { width: 100px; height: 100px; object-fit: contain; margin-bottom: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-        th { background-color: #f1f5f9; color: var(--dark-gray); }
-        
-        /* หน้าต่าง Modal ต่างๆ */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal.active { display: flex; }
-        .modal-content { background: white; padding: 25px; border-radius: 10px; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; }
-        
-        /* สถิติ Dashboard */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
-        .stat-card .value { font-size: 28px; font-weight: bold; margin-bottom: 5px; }
-        .stat-card .label { color: var(--dark-gray); font-size: 14px; }
-        .chart-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-        @media(max-width: 768px) { .chart-container { grid-template-columns: 1fr; } }
-    </style>
-</head>
-<body>
-
-    <div id="loader" class="loader-container">
-        <div class="loader"></div>
-    </div>
-
-    <div class="header">ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</div>
-
-    <div class="nav-container">
-        <button class="nav-btn active" data-view="items-view">ยืมของ</button>
-        <button class="nav-btn" data-view="return-view">คืนของ</button>
-        <button class="nav-btn" data-view="history-view">ประวัติการยืม-คืน</button>
-        <button class="nav-btn" data-view="stats-view">สถิติ</button>
-        <button class="nav-btn" id="show-manage-modal-btn">จัดการอุปกรณ์</button>
-    </div>
-
-    <div class="main-content">
-        
-        <div id="items-view" class="view active">
-            <div class="search-bar-container">
-                <input type="text" id="search-input" class="search-input" placeholder="ค้นหาชื่ออุปกรณ์ หรือรายละเอียด...">
-                <button id="scan-qr-btn" class="btn btn-primary">📷 สแกน</button>
-                <button id="cart-toggle-btn" class="btn btn-cart">ตะกร้า (<span id="cart-count">0</span>)</button>
-            </div>
-            <div id="items-container" class="items-grid"></div>
-        </div>
-
-        <div id="return-view" class="view">
-            <div class="search-bar-container">
-                <input type="text" id="return-search-input" class="search-input" placeholder="พิมพ์ชื่อผู้ยืมเพื่อค้นหาของที่ต้องการคืน...">
-                <button id="return-selected-btn" class="btn btn-primary" style="background-color: var(--success);">ยืนยันการคืนของ</button>
-            </div>
-            <div id="return-container" style="overflow-x:auto;">
-                <table id="return-table">
-                    <thead>
-                        <tr>
-                            <th><input type="checkbox" id="select-all-returns"></th>
-                            <th>รหัสประวัติ</th>
-                            <th>ผู้ยืม</th>
-                            <th>อุปกรณ์</th>
-                            <th>กำลังยืม</th>
-                            <th>วันที่ยืม</th>
-                            <th>คืนสภาพดี</th>
-                            <th>ใช้สิ้นเปลืองไป</th>
-                        </tr>
-                    </thead>
-                    <tbody id="return-body">
-                        <tr><td colspan="8" style="text-align:center; padding:20px;">กรุณาพิมพ์ค้นหาชื่อผู้ยืมด้านบน</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="history-view" class="view">
-            <div class="search-bar-container">
-                <input type="text" id="history-search-input" class="search-input" placeholder="ค้นหาประวัติยืมคืน...">
-            </div>
-            <div id="history-table-container" style="overflow-x:auto;"></div>
-        </div>
-
-        <div id="stats-view" class="view">
-            <div style="text-align: right; margin-bottom: 15px;">
-                <button class="btn btn-primary" onclick="exportStatsToPDF()" style="background-color: var(--danger);">📥 ดาวน์โหลดสถิติเป็น PDF</button>
-            </div>
-            <div id="stats-grid" class="stats-grid"></div>
-            <div class="chart-container">
-                <div style="background:white; padding:15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                    <h4 style="text-align:center; margin-bottom:10px;">สัดส่วนสถานะอุปกรณ์</h4>
-                    <canvas id="statusPieChart" style="max-height:260px;"></canvas>
-                </div>
-                <div style="background:white; padding:15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                    <h4 style="text-align:center; margin-bottom:10px;">5 อันดับอุปกรณ์ที่ถูกยืมบ่อยที่สุด</h4>
-                    <canvas id="topItemsBarChart" style="max-height:260px;"></canvas>
-                </div>
-            </div>
-            <div id="usage-stats-container" style="margin-top: 30px; background: white; padding: 20px; border-radius: 8px;">
-                <h3 style="margin-bottom: 15px;">ตารางสถิติรายอุปกรณ์</h3>
-                <div class="table-container" style="overflow-x:auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ชื่ออุปกรณ์</th>
-                                <th>ตั้งต้น</th>
-                                <th>ใช้ไป</th>
-                                <th>คงเหลือรวม</th>
-                                <th>ถูกยืมอยู่</th>
-                                <th>พร้อมยืม</th>
-                                <th>ยืม (ครั้ง)</th>
-                                <th>คืน (ครั้ง)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="usage-stats-body"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <div id="cart-modal" class="modal">
-        <div class="modal-content">
-            <h3 style="margin-bottom: 15px; border-bottom: 2px solid var(--primary-color); padding-bottom: 5px;">📥 รายการในตะกร้า</h3>
-            <div id="cart-items-list" style="margin-bottom: 20px;"></div>
-            <form id="borrow-form">
-                <div style="margin-bottom: 15px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight:bold;">ชื่อผู้ทำการยืม:</label>
-                    <input type="text" id="borrower-name" class="search-input" style="width:100%;" required placeholder="ระบุชื่อ-นามสกุล">
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight:bold;">กำหนดคืน (ถ้ามี):</label>
-                    <input type="date" id="expected-return-date" class="search-input" style="width:100%;">
-                </div>
-                <div style="display:flex; gap:10px; justify-content: flex-end;">
-                    <button type="button" id="cart-close-btn" class="btn" style="background: var(--dark-gray); color:white;">ปิด</button>
-                    <button type="submit" id="borrow-btn" class="btn" style="background: var(--primary-color); color:white;">ยืนยันการยืม</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="manage-items-modal" class="modal">
-        <div class="modal-content" style="max-width: 900px; width:95%;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h3>🔧 จัดการข้อมูลอุปกรณ์ในคลัง</h3>
-                <button id="open-add-new-item-form" class="btn btn-primary" style="background:var(--success);">＋ เพิ่มอุปกรณ์ใหม่</button>
-            </div>
-            <div id="manage-items-table-container" style="overflow-x:auto;"></div>
-            <div style="text-align:right; margin-top:15px;">
-                <button type="button" class="btn" onclick="hideModal('manage-items-modal')" style="background:var(--dark-gray); color:white;">ปิดหน้าต่าง</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="item-form-modal" class="modal">
-        <div class="modal-content">
-            <h3 id="item-form-title" style="margin-bottom:15px;">เพิ่มอุปกรณ์ใหม่</h3>
-            <form id="item-form">
-                <input type="hidden" id="item-id">
-                <input type="hidden" id="item-image-base64">
-                <div style="margin-bottom: 12px;">
-                    <label style="display:block; margin-bottom:4px; font-weight:bold;">ชื่ออุปกรณ์:</label>
-                    <input type="text" id="item-name" class="search-input" style="width:100%;" required>
-                </div>
-                <div style="margin-bottom: 12px;">
-                    <label style="display:block; margin-bottom:4px; font-weight:bold;">รายละเอียด/คำอธิบาย:</label>
-                    <textarea id="item-description" class="search-input" style="width:100%; height:60px;"></textarea>
-                </div>
-                <div style="margin-bottom: 12px;">
-                    <label style="display:block; margin-bottom:4px; font-weight:bold;">จำนวนทั้งหมด (ตั้งต้น):</label>
-                    <input type="number" id="item-quantity" class="search-input" style="width:100%;" min="1" required>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display:block; margin-bottom:4px; font-weight:bold;">รูปภาพอุปกรณ์ (จำกัดไม่เกิน 250KB):</label>
-                    <input type="file" id="item-image-upload" accept="image/*" style="margin-bottom:10px;">
-                    <img id="image-preview" src="" style="width:100px; height:100px; object-fit:contain; display:none; border:1px solid #ccc; border-radius:4px;">
-                </div>
-                <div style="display:flex; gap:10px; justify-content:flex-end;">
-                    <button type="button" class="btn" onclick="hideModal('item-form-modal'); showModal('manage-items-modal');" style="background:var(--dark-gray); color:white;">ยกเลิก</button>
-                    <button type="submit" class="btn" style="background:var(--primary-color); color:white;">บันทึกข้อมูล</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="qrcode-modal" class="modal">
-        <div class="modal-content">
-            <h3>📷 สแกนคิวอาร์โค้ดอุปกรณ์</h3>
-            <div id="qr-reader" style="width:100%; background:#000; margin:15px 0;"></div>
-            <div style="text-align:right;">
-                <button type="button" class="btn" onclick="stopQRScanner()" style="background:var(--dark-gray); color:white;">ปิดกล้อง</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
+<script>
         let cart = [];
         let allBorrowedItems = [];
         let myPieChart = null;
@@ -269,7 +23,7 @@
 
             if (method === 'POST') {
                 options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
-                options.body = JSON.stringify({ action: action, data: data }); // ห่อด้วยคำว่า data ตามโค้ดหลังบ้าน
+                options.body = JSON.stringify({ action: action, data: data }); 
             } else {
                 const params = new URLSearchParams({ action, ...data });
                 url += `?${params.toString()}`;
@@ -283,6 +37,9 @@
         function showLoader() { document.getElementById('loader').style.display = 'flex'; }
         function hideLoader() { document.getElementById('loader').style.display = 'none'; }
         function showAlert(msg, icon = 'success') { Swal.fire({ text: msg, icon: icon, confirmButtonColor: 'var(--primary-color)' }); }
+
+        function showModal(id) { const m = document.getElementById(id); if(m) m.classList.add('active'); }
+        function hideModal(id) { const m = document.getElementById(id); if(m) m.classList.remove('active'); }
 
         function showView(viewId) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -299,9 +56,6 @@
             if (viewId === 'stats-view' && dataCacheFlags.stats) loadStats();
         }
 
-        function showModal(id) { const m = document.getElementById(id); if(m) m.classList.add('active'); }
-        function hideModal(id) { const m = document.getElementById(id); if(m) m.classList.remove('active'); }
-
         window.onload = function() {
             document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -317,7 +71,7 @@
             document.getElementById('history-search-input').addEventListener('input', e => filterHistoryTable(e.target.value));
             document.getElementById('return-search-input').addEventListener('input', e => { 
                 if(!e.target.value.trim()) { 
-                    document.getElementById('return-body').innerHTML='<tr><td colspan="8" style="text-align:center;">กรุณาพิมพ์ค้นหาชื่อผู้ยืมด้านบน</td></tr>'; 
+                    document.getElementById('return-body').innerHTML='<tr><td colspan="8" style="text-align:center; padding:20px;">กรุณาพิมพ์ค้นหาชื่อผู้ยืมด้านบน</td></tr>'; 
                     return; 
                 } 
                 searchBorrowedItems(e.target.value); 
@@ -359,9 +113,15 @@
             container.innerHTML = html;
         }
 
+        // 🌟 ค้นหาได้ทั้งชื่อ และ รหัส ID ตรงตัวจากการสแกนคิวอาร์โค้ด
         function filterItems(keyword) {
             if(!keyword.trim()) { renderItemsGrid(window.allItems); return; }
-            const filtered = window.allItems.filter(i => (i.name && i.name.toLowerCase().includes(keyword.toLowerCase())) || (i.description && i.description.toLowerCase().includes(keyword.toLowerCase())));
+            const lowerKeyword = keyword.toLowerCase().trim();
+            const filtered = window.allItems.filter(i => 
+                (i.id && String(i.id).toLowerCase() === lowerKeyword) || 
+                (i.name && i.name.toLowerCase().includes(lowerKeyword)) || 
+                (i.description && i.description.toLowerCase().includes(lowerKeyword))
+            );
             renderItemsGrid(filtered);
         }
 
@@ -402,7 +162,6 @@
 
         function removeFromCart(id) { cart = cart.filter(c => c.id != id); updateCartCount(); renderCart(); }
 
-        // ปรับจูนคำสั่งยืมของส่งไปหลังบ้าน -> เปลี่ยนเป็น 'processBorrowLogic'
         document.getElementById('borrow-form').addEventListener('submit', function(e) {
             e.preventDefault(); if(cart.length===0) return;
             const borrowerName = document.getElementById('borrower-name').value.trim();
@@ -420,7 +179,6 @@
                 .catch(e => { hideLoader(); showAlert(e.message || e, 'error'); });
         });
 
-        // ปรับจูนการค้นหาอุปกรณ์รอคืน -> เปลี่ยนเป็น 'searchBorrowedItems' แบบ POST
         function searchBorrowedItems(q) {
             document.getElementById('return-body').innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px;">กำลังค้นหาข้อมูล...</td></tr>';
             callAPI('searchBorrowedItems', q, 'POST')
@@ -459,7 +217,6 @@
             document.getElementById(`good-${id}`).value = Math.max(0, max - consVal);
         }
 
-        // ปรับจูนคำสั่งส่งคืนของ -> เปลี่ยนเป็น 'returnMultipleItems' และคีย์ payload เป็น 'items'
         function submitReturns() {
             const checked = document.querySelectorAll('.return-checkbox:checked');
             if(checked.length === 0) { showAlert('กรุณาเลือกรายการค้างยืมที่ต้องการคืนอย่างน้อย 1 รายการ', 'warning'); return; }
@@ -601,7 +358,6 @@
              document.getElementById('item-form-title').textContent = 'แก้ไขอุปกรณ์'; hideModal('manage-items-modal'); showModal('item-form-modal');
         }
 
-        // ปรับจูนปุ่มลบอุปกรณ์ -> ส่งเป็น ID เปล่าๆ ไปยังฟังก์ชันหลังบ้าน
         function deleteItem(id) {
              Swal.fire({ title: 'ยืนยันการลบ?', text: "ต้องการลบใช่หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'ลบเลย!', cancelButtonText: 'ยกเลิก'
              }).then((result) => {
@@ -697,7 +453,7 @@
         }
 
         function getDefaultImage() { 
-            return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNmM2Y0ZjYiLz48dGV4dCB4PSIxMDAiIHk9Ijc1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjc3NDhkIiBmb250LXNpemU9IjE0Ij7guYTguKHguYjguKHguLXguKPguLnguJo8L3RleHQ+PC9zdmc+'; 
+            return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNmM2Y0ZjYiLz48dGV4dCB4PSIxMDAiIHk9Ijc1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjc3NDhkIiBmb250LXNpemU9IjE0Ij7guYTguKHguYjguKHguLXguKPguLnguJo8L3RleHQ+PC9zdmc+'; 
         }
     </script>
 </body>
