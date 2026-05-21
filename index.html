@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบยืม-คืนอุปกรณ์ด้วย QR Code (GitHub Pages Version)</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 25px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        h2 { margin-top: 0; color: #1e3c72; font-size: 1.3rem; border-bottom: 2px solid #f0f2f5; padding-bottom: 8px; }
+        #reader {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: none !important;
+            background-color: #fafafa;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+        .btn-primary { background-color: #1e3c72; color: white; }
+        .btn-primary:hover { background-color: #2a5298; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-success:hover { background-color: #218838; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-danger:hover { background-color: #c82333; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-secondary:hover { background-color: #5a6268; }
+        
+        .result-box {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .label { font-weight: bold; color: #666; }
+        .value { font-weight: 500; text-align: right; }
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        .badge-success { background-color: #d4edda; color: #155724; }
+        .badge-danger { background-color: #f8d7da; color: #721c24; }
+        
+        #message {
+            text-align: center;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            display: none;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .msg-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .msg-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .config-box {
+            font-size: 0.9rem;
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #1e3c72;
+        }
+        .config-box input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin:0; font-size: 1.6rem;">📦 ระบบยืม-คืนอุปกรณ์</h1>
+            <p style="margin:5px 0 0 0; opacity:0.8; font-size:0.9rem;">เวอร์ชัน GitHub Pages ปลอดภัย เปิดกล้องติด 100%</p>
+        </div>
+
+        <div class="config-box">
+            <label><strong>🔗 เชื่อมต่อ Google Apps Script Web App URL:</strong></label>
+            <input type="text" id="scriptUrl" placeholder="วาง URL Web App ที่นี่..." onchange="saveUrl()">
+        </div>
+
+        <div id="message"></div>
+
+        <div class="card">
+            <h2>📷 กล้องสแกน QR Code</h2>
+            <div id="reader"></div>
+            <button class="btn btn-primary" id="toggleScanBtn" onclick="startScanner()" style="margin-top:15px;">เปิดกล้องเริ่มสแกน</button>
+        </div>
+
+        <div id="resultBox" class="card result-box">
+            <h2>📋 ข้อมูลอุปกรณ์ที่สแกนพบ</h2>
+            <div class="info-row">
+                <span class="label">ID อุปกรณ์:</span>
+                <span class="value" id="resId">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">ชื่ออุปกรณ์:</span>
+                <span class="value" id="resName">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">รายละเอียด:</span>
+                <span class="value" id="resDesc">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">จำนวนทั้งหมดในคลัง:</span>
+                <span class="value" id="resTotal">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">พร้อมใช้งานตอนนี้:</span>
+                <span class="value" id="resAvailable">-</span>
+            </div>
+            
+            <div style="margin-top: 25px;">
+                <button class="btn btn-success" id="btnBorrow" onclick="processAction('borrow')">🤝 ทำรายการยืม (ลดคลังลง 1)</button>
+                <button class="btn btn-danger" id="btnReturn" onclick="processAction('return')">↩️ ทำรายการคืน (เพิ่มคลังเข้า 1)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // คุณสามารถเอาลิงก์ Web App URL มาใส่ตรงนี้ถาวรได้เลยครับเพื่อความสะดวกในการเปิดหน้าแรก
+        const DEFAULT_WEB_APP_URL = ""; 
+
+        let html5QrcodeScanner = null;
+        let lastScannedId = null;
+
+        // โหลด URL ที่จำไว้มาแสดงเมื่อเปิดหน้าเว็บ
+        window.onload = function() {
+            const savedUrl = localStorage.getItem("gas_web_app_url") || DEFAULT_WEB_APP_URL;
+            document.getElementById("scriptUrl").value = savedUrl;
+        }
+
+        function saveUrl() {
+            const url = document.getElementById("scriptUrl").value.trim();
+            localStorage.setItem("gas_web_app_url", url);
+        }
+
+        function getWebAppUrl() {
+            const url = document.getElementById("scriptUrl").value.trim();
+            if (!url) {
+                showMsg("❌ กรุณากรอกหรือวางข้อมูล Web App URL ในช่องตั้งค่าด้านบนก่อนครับ", "error");
+                return null;
+            }
+            return url;
+        }
+
+        function showMsg(text, type) {
+            const msgBox = document.getElementById("message");
+            msgBox.innerText = text;
+            msgBox.className = type === "success" ? "msg-success" : "msg-error";
+            msgBox.style.display = "block";
+        }
+
+        function startScanner() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear();
+            }
+            
+            document.getElementById("toggleScanBtn").style.display = "none";
+            
+            // ตั้งค่าเครื่องสแกนกล้อง
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 },
+                rememberLastUsedCamera: true
+            });
+            
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            // เมื่อสแกนเจอ ให้ปิดกล้องชั่วคราวเพื่อนำไอดีไปดึงข้อมูล
+            html5QrcodeScanner.clear();
+            document.getElementById("toggleScanBtn").style.display = "block";
+            document.getElementById("toggleScanBtn").innerText = "🔄 เปิดกล้องสแกนชิ้นถัดไป";
+            
+            lastScannedId = decodedText;
+            fetchItemDetails(decodedText);
+        }
+
+        function onScanFailure(error) {
+            // ปล่อยข้ามในลูปสแกนปกติกล้องจับสัญญาณข้อความ
+        }
+
+        // ฟังก์ชันดึงข้อมูลจากหลังบ้าน (Google Apps Script) ผ่านการ fetch แบบ text/plain เพื่อข้ามปัญหา CORS
+        function fetchItemDetails(id) {
+            const url = getWebAppUrl();
+            if (!url) return;
+
+            showMsg("⏳ กำลังค้นหาฐานข้อมูลอุปกรณ์...", "success");
+            document.getElementById("resultBox").style.display = "none";
+
+            fetch(url, {
+                method: "POST",
+                mode: "cors",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ action: "scan", id: id })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === "success") {
+                    showMsg("✨ ค้นพบข้อมูลอุปกรณ์เรียบร้อยแล้ว", "success");
+                    displayItem(result.data);
+                } else {
+                    showMsg("❌ ไม่สำเร็จ: " + result.message, "error");
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                showMsg("⚠️ การเชื่อมต่อผิดพลาด! โปรดตรวจดูว่า Deploy สิทธิ์เป็น Anyone หรือยัง", "error");
+            });
+        }
+
+        function displayItem(item) {
+            document.getElementById("resId").innerText = item.id;
+            document.getElementById("resName").innerText = item.name;
+            document.getElementById("resDesc").innerText = item.description || "-";
+            document.getElementById("resTotal").innerText = item.totalQuantity;
+            
+            const availSpan = document.getElementById("resAvailable");
+            availSpan.innerText = item.availableQuantity;
+            
+            // ตรวจสอบเช็คปุ่มกดถ้ายอดคงเหลือหมด
+            if (parseInt(item.availableQuantity) <= 0) {
+                availSpan.className = "value badge badge-danger";
+                document.getElementById("btnBorrow").disabled = true;
+                document.getElementById("btnBorrow").style.opacity = 0.5;
+            } else {
+                availSpan.className = "value badge badge-success";
+                document.getElementById("btnBorrow").disabled = false;
+                document.getElementById("btnBorrow").style.opacity = 1;
+            }
+            
+            document.getElementById("resultBox").style.display = "block";
+        }
+
+        // ฟังก์ชันส่งบันทึกการ ยืม หรือ คืน อุปกรณ์กลับไปหาชีต
+        function processAction(actionType) {
+            const url = getWebAppUrl();
+            if (!url || !lastScannedId) return;
+
+            const actionText = actionType === 'borrow' ? 'ยืม' : 'คืน';
+            showMsg(`⏳ กำลังบันทึกธุรกรรมการ${actionText}ลงระบบคลัง...`, "success");
+
+            fetch(url, {
+                method: "POST",
+                mode: "cors",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ action: actionType, id: lastScannedId })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === "success") {
+                    showMsg(`🎉 บันทึกระบบทำการ${actionText}เรียบร้อยแล้ว!`, "success");
+                    displayItem(result.data); // รีเฟรชยอดตัวเลขบนจอ
+                } else {
+                    showMsg("❌ ผิดพลาด: " + result.message, "error");
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                showMsg("⚠️ ระบบบันทึกข้อมูลไม่สำเร็จ", "error");
+            });
+        }
+    </script>
+</body>
+</html>
