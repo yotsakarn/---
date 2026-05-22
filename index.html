@@ -22,7 +22,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
   
   <style>
-    /* คงโครงสร้างหน้าเว็บดั้งเดิมและรูปแบบเดิมทั้งหมด */
     :root { 
       --primary-color: #4a69bd; 
       --secondary-color: #6a89cc; 
@@ -257,8 +256,8 @@
   </div>
 
   <script>
-    // ⚠️ นำ URL เว็บแอปที่ได้จากขั้นตอนการ Deploy ใน Google Apps Script มาวางที่นี่
-    const WEB_APP_URL = "วาง_URL_ของเว็บแอปที่นี่";
+    // ⚠️ ใส่ลิงก์ Web App API ของคุณเรียบร้อยแล้ว
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzNp3PG-2gADMw5WfFcwrQ0vAcwjnoBR4pzSwTBWrzZ8sgXz_m5f23T5oA-DhWVzRuwpA/exec";
 
     const AppDB = {
       async callAPI(action, data = {}) {
@@ -324,7 +323,6 @@
     
     document.querySelectorAll('.close-btn[data-modal]').forEach(btn => { btn.addEventListener('click', () => hideModal(btn.dataset.modal)); });
 
-    // ค้นหาอุปกรณ์ (Realtime)
     document.getElementById('search-input').addEventListener('input', function(e) {
       const searchTerm = e.target.value.toLowerCase();
       document.querySelectorAll('.item-card').forEach(card => {
@@ -506,14 +504,12 @@
       hideLoader();
       if(stats.error) { showAlert(stats.error, 'error'); return; }
       
-      // เรนเดอร์การ์ดสถิติ
       document.getElementById('stats-grid').innerHTML = `
         <div class="stat-card"><div class="value">${stats.totalItems}</div><div class="label">ทั้งหมด (ชิ้น)</div></div>
         <div class="stat-card"><div class="value" style="color:var(--success);">${stats.availableItems}</div><div class="label">พร้อมใช้งาน (ชิ้น)</div></div>
         <div class="stat-card"><div class="value" style="color:var(--warning);">${stats.borrowedItems}</div><div class="label">กำลังถูกยืม (ชิ้น)</div></div>
         <div class="stat-card"><div class="value" style="color:var(--danger);">${stats.totalConsumed}</div><div class="label">สิ้นเปลือง (ชิ้น)</div></div>`;
 
-      // เรนเดอร์ตารางสถิติรายตัว
       const tbody = document.getElementById('usage-stats-body'); tbody.innerHTML = '';
       stats.itemUsageStats.forEach(item => { 
          tbody.innerHTML += `<tr>
@@ -521,10 +517,8 @@
          </tr>`; 
       });
 
-      // ดึงประวัติที่แนบมาด้วยเรนเดอร์ลง Tab ประวัติไปเลยพร้อมกันเพื่อลดความซ้ำซ้อน
       renderHistoryTable(stats.rawHistory);
 
-      // วาด Chart
       if(myPieChart) myPieChart.destroy(); if(myBarChart) myBarChart.destroy();
       myPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), { type: 'doughnut', data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems, stats.borrowedItems, stats.totalConsumed], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] } });
       const topItems = stats.mostBorrowedItems.slice(0, 5);
@@ -546,7 +540,6 @@
       if(dataCacheFlags.history) { showLoader(); const stats = await AppDB.getStats(); renderHistoryTable(stats.rawHistory); hideLoader(); }
     }
 
-    // ระบบจัดการอุปกรณ์หลักหลังบ้าน (Admin ส่วนยืนยันตัวตน)
     document.getElementById('show-manage-modal-btn').addEventListener('click', () => {
       Swal.fire({ title: 'สิทธิ์แอดมิน', input: 'password', showCancelButton: true, confirmButtonText: 'ตกลง' }).then(async (res) => {
         if (res.isConfirmed && res.value === '1234') { await loadManageItems(); showModal('manage-items-modal'); }
@@ -604,7 +597,6 @@
       html2pdf().set({ margin:10, filename:'สถิติอุปกรณ์.pdf', html2canvas:{scale:2}, jsPDF:{format:'a4', orientation:'landscape'} }).from(el).save().then(() => { hideLoader(); showAlert('ดาวน์โหลดสำเร็จ!'); });
     }
 
-    // ระบบสแกน QR Code (ดึงลอจิกเปิดกล้องขึ้นหน้า HTTPS ของ GitHub Pages)
     document.getElementById('scan-qr-btn').addEventListener('click', () => { showModal('qr-modal'); startScanner(); });
     document.getElementById('close-qr-btn').addEventListener('click', () => { stopScanner(); });
 
