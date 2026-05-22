@@ -298,6 +298,7 @@
         showView('items-view'); 
     };
 
+    // ดึงข้อมูลทั้งหมดรวดเดียวจบ (Pre-fetching)
     async function fetchAllData() {
       showLoader();
       try {
@@ -316,6 +317,7 @@
       hideLoader();
     }
 
+    // ฟังก์ชันช่วยอัปเดตหน้าจอที่กำลังเปิดอยู่ทันที
     function refreshActiveView() {
       const activeView = document.querySelector('.view.active');
       if (!activeView) return;
@@ -327,6 +329,7 @@
       else if (viewId === 'stats-view') displayStats();
     }
 
+    // การสลับหน้า (เปลี่ยนได้ทันที ไม่ต้องรอโหลด)
     const views = document.querySelectorAll('.view');
     const navButtons = document.querySelectorAll('.nav-btn');
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
@@ -341,6 +344,7 @@
       const targetBtn = document.querySelector(`[data-view="${viewId}"]`);
       if(targetBtn) targetBtn.classList.add('active');
 
+      // เรนเดอร์หน้าจอนั้นจากหน่วยความจำทันที
       refreshActiveView();
     }
 
@@ -366,13 +370,6 @@
     document.getElementById('return-search-input').addEventListener('input', function(e) {
       const searchTerm = e.target.value.toLowerCase();
       document.querySelectorAll('#return-items-body tr').forEach(row => {
-        row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
-      });
-    });
-
-    document.getElementById('history-search-input').addEventListener('input', function(e) {
-      const searchTerm = e.target.value.toLowerCase();
-      document.querySelectorAll('#hist-body tr').forEach(row => {
         row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
       });
     });
@@ -451,6 +448,7 @@
           hideModal('borrow-modal'); 
           cart = []; 
           updateCartUI(); 
+          // รีเฟรชข้อมูลทั้งหมดเบื้องหลัง และวาดหน้าจอใหม่
           await fetchAllData(); 
           refreshActiveView(); 
       } else { showAlert(res.error, 'error'); }
@@ -520,6 +518,7 @@
           hideLoader();
           if(res.success){ 
              showAlert(res.message); 
+             // อัปเดตข้อมูลแบบเบื้องหลังหลังทำงานสำเร็จ
              await fetchAllData(); 
              refreshActiveView();
           } else { showAlert(res.error, 'error'); }
@@ -557,8 +556,8 @@
       if(!history || history.length === 0) { container.innerHTML = '<p style="text-align:center;">ไม่มีประวัติ</p>'; return; }
       let html = `<table><thead><tr><th>รหัส</th><th>ผู้ยืม</th><th>ชื่ออุปกรณ์</th><th>จำนวนยืม</th><th>วันที่ยืม</th><th>สถานะ</th><th>วันที่คืนจริง</th></tr></thead><tbody id="hist-body">`;
       history.forEach(h => {
-          let badge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
-          html += `<tr><td>${h.historyId}</td><td>${h.borrowerName}</td><td>${h.itemName}</td><td>${h.borrowQty}</td><td>${h.borrowDate}</td><td>${badge}</td><td>${h.actualReturnDate}</td></tr>`;
+         let badge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
+         html += `<tr><td>${h.historyId}</td><td>${h.borrowerName}</td><td>${h.itemName}</td><td>${h.borrowQty}</td><td>${h.borrowDate}</td><td>${badge}</td><td>${h.actualReturnDate}</td></tr>`;
       });
       container.innerHTML = html + `</tbody></table>`;
     }
@@ -631,97 +630,27 @@
         }
     });
 
-    // --- QR Scanner (แก้ไขระบบตรวจจับรายชื่อกล้องอัจฉริยะ ป้องกันการค้างบนคอมพิวเตอร์) ---
+    // --- QR Scanner ---
     document.getElementById('scan-qr-btn').addEventListener('click', () => { showModal('qr-modal'); startScanner(); });
     document.getElementById('close-qr-btn').addEventListener('click', () => { stopScanner(); });
 
     function startScanner() {
-      if (html5QrCode) {
-        html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {}).finally(() => {
-          initAndStartCamera();
-        });
-      } else {
-        initAndStartCamera();
-      }
-    }
-
-    function initAndStartCamera() {
       html5QrCode = new Html5Qrcode("reader");
-      const qrboxSize = window.innerWidth < 500 ? 250 : 300;
-
-      // เรียกดึงรายชื่อกล้องทั้งหมดที่มีในอุปกรณ์ก่อนเปิด เพื่อดูว่ารันบน PC หรือ มือถือ
-      Html5Qrcode.getCameras().then(devices => {
-        if (!devices || devices.length === 0) {
-          // หากไม่พบรายชื่อกล้อง ให้เบราว์เซอร์สุ่มเปิดตามความเหมาะสม
-          startCameraWithConfig({ facingMode: "environment" }, qrboxSize);
-          return;
-        }
-
-        // ค้นหาหาตำแหน่งกล้องหลัง (สำหรับกรณีเปิดผ่านมือถือ)
-        let selectedCameraId = devices[0].id; // ตั้งค่าเริ่มต้นเป็นกล้องแรก (เช่น Webcam บนคอม)
-        for (const device of devices) {
-          const label = device.label.toLowerCase();
-          if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
-            selectedCameraId = device.id;
-            break;
-          }
-        }
-
-        startCameraWithConfig(selectedCameraId, qrboxSize);
-      }).catch(err => {
-        console.warn("getCameras failed, trying direct facingMode fallback:", err);
-        // กรณีดึงลิสต์ไม่ได้ ให้ fallback สั่งเปิดกล้องตรง ๆ
-        startCameraWithConfig({ facingMode: "environment" }, qrboxSize);
-      });
-    }
-
-    function startCameraWithConfig(cameraConfig, qrboxSize) {
-      html5QrCode.start(
-        cameraConfig,
-        {
-          fps: 25,
-          qrbox: { width: qrboxSize, height: qrboxSize }
-          // นำ advanced focus และ aspect ratio ล็อก 1.0 ออก เพื่อไม่ให้เกิด OverconstrainedError บนเว็บแคมของคอมพิวเตอร์
-        },
-        onScanSuccess,
-        onScanFailure
-      ).catch(err => {
-        console.error("Primary camera mode failed, trying ultra-safe mode...", err);
-        
-        // แผนสำรองสุดท้าย: เปิดกล้องแบบไร้เงื่อนไขข้อจำกัดใดๆ (โหมดปลอดภัยที่สุดสำหรับกล้องคอมพิวเตอร์รุ่นเก่า)
-        html5QrCode.start(
-          cameraConfig,
-          { fps: 15, qrbox: qrboxSize },
-          onScanSuccess,
-          onScanFailure
-        ).catch(finalErr => {
-          console.error("Camera completely failed:", finalErr);
-          showAlert("ไม่สามารถเปิดกล้องได้: โปรดตรวจสอบว่าไม่มีแอปอื่นแอบสลับใช้กล้องอยู่ (เช่น Line, Zoom, Meet) หรือลองทำการปิด-เปิดเว็บเบราว์เซอร์ใหม่อีกครั้งครับ", "error");
-          hideModal('qr-modal');
-        });
-      });
+      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, onScanFailure)
+      .catch(() => { showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); hideModal('qr-modal'); });
     }
 
     function stopScanner() { if (html5QrCode) { html5QrCode.stop().then(() => html5QrCode.clear()).catch(e => console.log(e)); } hideModal('qr-modal'); }
 
     function onScanSuccess(decodedText) {
-      stopScanner();
-      const scannedId = decodedText.trim();
+      stopScanner(); const scannedId = decodedText.trim(); 
       const item = window.allItems.find(i => i.id == scannedId || i.name.toLowerCase() == scannedId.toLowerCase());
-
-      if (item) {
-         const searchInput = document.getElementById('search-input');
-         searchInput.value = item.name;
-
-         const event = new Event('input', { bubbles: true });
-         searchInput.dispatchEvent(event);
-
-         showAlert(`พบอุปกรณ์: "${item.name}"`);
-      } else {
-         showAlert(`ไม่พบข้อมูลอุปกรณ์รหัสนี้ในระบบ`, 'error');
-      }
+      if (item && item.availableQuantity > 0) {
+         if (cart.findIndex(c => c.id == item.id) === -1) {
+             cart.push({ id: item.id, name: item.name, maxQty: item.availableQuantity, requestQty: 1 }); updateCartUI(); showAlert(`เพิ่ม "${item.name}" ลงตะกร้าแล้ว!`);
+         } else { showAlert(`ไอเทมนี้อยู่ในตะกร้าแล้ว`, 'warning'); }
+      } else { showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือของหมด`, 'error'); }
     }
-    
     function onScanFailure() {}
   </script>
 </body>
