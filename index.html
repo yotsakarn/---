@@ -565,8 +565,8 @@
       if(!history || history.length === 0) { container.innerHTML = '<p style="text-align:center;">ไม่มีประวัติ</p>'; return; }
       let html = `<table><thead><tr><th>รหัส</th><th>ผู้ยืม</th><th>ชื่ออุปกรณ์</th><th>จำนวนยืม</th><th>วันที่ยืม</th><th>สถานะ</th><th>วันที่คืนจริง</th></tr></thead><tbody id="hist-body">`;
       history.forEach(h => {
-         let badge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
-         html += `<tr><td>${h.historyId}</td><td>${h.borrowerName}</td><td>${h.itemName}</td><td>${h.borrowQty}</td><td>${h.borrowDate}</td><td>${badge}</td><td>${h.actualReturnDate}</td></tr>`;
+          let badge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
+          html += `<tr><td>${h.historyId}</td><td>${h.borrowerName}</td><td>${h.itemName}</td><td>${h.borrowQty}</td><td>${h.borrowDate}</td><td>${badge}</td><td>${h.actualReturnDate}</td></tr>`;
       });
       container.innerHTML = html + `</tbody></table>`;
     }
@@ -639,34 +639,66 @@
         }
     });
 
-    // --- QR Scanner ---
+    // --- QR Scanner (แก้ไขระบบเปิดกล้องอัจฉริยะ ป้องกันข้อผิดพลาด) ---
     document.getElementById('scan-qr-btn').addEventListener('click', () => { showModal('qr-modal'); startScanner(); });
     document.getElementById('close-qr-btn').addEventListener('click', () => { stopScanner(); });
 
     function startScanner() {
+      // เคลียร์ค่าระบบเดิมทิ้งก่อนเพื่อความปลอดภัย
+      if (html5QrCode) {
+         html5QrCode.clear().catch(err => console.log(err));
+      }
+
       html5QrCode = new Html5Qrcode("reader");
-      
-      // คำนวณขนาดกรอบสแกนให้พอดีกับหน้าจอมือถือแต่ละรุ่น
       const qrboxSize = window.innerWidth < 500 ? 250 : 300;
 
+      // ขั้นตอนที่ 1: ทดลองเปิดกล้องหลังก่อน (สำหรับโทรศัพท์มือถือ)
       html5QrCode.start(
         { 
-          facingMode: "environment", // บังคับใช้กล้องหลังเสมอ
-          advanced: [{ focusMode: "continuous" }] // พยายามบังคับให้กล้อง Auto Focus ตลอดเวลา (มือถือบางรุ่นรองรับ)
+          facingMode: "environment",
+          advanced: [{ focusMode: "continuous" }] 
         }, 
         { 
-          fps: 30, // เพิ่มเฟรมเรตการจับภาพจาก 10 เป็น 30 ให้สแกนลื่นขึ้นและไวขึ้น
-          qrbox: { width: qrboxSize, height: qrboxSize }, // ปรับกรอบสแกนให้ยืดหยุ่นตามหน้าจอ
-          aspectRatio: 1.0, // ล็อกสัดส่วนกล้องไม่ให้ภาพเบี้ยว
-          disableFlip: false // อนุญาตให้กลับด้านภาพอัตโนมัติ (ช่วยให้อ่าน QR ง่ายขึ้น)
+          fps: 30, 
+          qrbox: { width: qrboxSize, height: qrboxSize }, 
+          aspectRatio: 1.0, 
+          disableFlip: false 
         }, 
         onScanSuccess, 
         onScanFailure
       )
       .catch((err) => { 
-        console.error("Camera Error:", err);
-        showAlert("ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบสิทธิ์การเข้าถึง", "error"); 
-        hideModal('qr-modal'); 
+        console.warn("ไม่พบกล้องหลัง หรือกำลังรันบนคอมพิวเตอร์ ระบบจะลองเปลี่ยนไปใช้กล้องหน้า/Webcam...");
+        
+        // ขั้นตอนที่ 2: หากเปิดกล้องหลังไม่สำเร็จ (เช่นเล่นบน PC) ค้นหากล้องทั้งหมดที่มีในอุปกรณ์
+        Html5Qrcode.getCameras().then(devices => {
+            if (devices && devices.length > 0) {
+                // เลือกอุปกรณ์กล้องตัวแรกที่ระบบหาเจอมาใช้งานทันที (Webcam ของคอมฯ)
+                const cameraId = devices[0].id;
+                html5QrCode.start(
+                    cameraId, 
+                    { 
+                      fps: 30, 
+                      qrbox: { width: qrboxSize, height: qrboxSize }, 
+                      aspectRatio: 1.0, 
+                      disableFlip: false 
+                    },
+                    onScanSuccess,
+                    onScanFailure
+                ).catch(err2 => {
+                    console.error("Camera Error Ultimate:", err2);
+                    showAlert("ไม่สามารถเปิดกล้องได้ อาจถูกใช้งานโดยโปรแกรมอื่นอยู่ (เช่น Zoom, Meet)", "error");
+                    hideModal('qr-modal');
+                });
+            } else {
+                showAlert("ไม่พบอุปกรณ์กล้องเชื่อมต่อกับเครื่องนี้", "error");
+                hideModal('qr-modal');
+            }
+        }).catch(err3 => {
+            console.error("Get Cameras Error:", err3);
+            showAlert("ไม่สามารถเข้าถึงระบบกล้องได้ กรุณาตรวจสอบสิทธิ์", "error"); 
+            hideModal('qr-modal'); 
+        });
       });
     }
 
