@@ -256,7 +256,6 @@
   </div>
 
   <script>
-    // ⚠️ ใส่ลิงก์ Web App API ของคุณเรียบร้อยแล้ว
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzNp3PG-2gADMw5WfFcwrQ0vAcwjnoBR4pzSwTBWrzZ8sgXz_m5f23T5oA-DhWVzRuwpA/exec";
 
     const AppDB = {
@@ -282,26 +281,62 @@
       async getStats() { return await this.callAPI("getStats"); }
     };
 
+    // --- Global State Variables ---
     let cart = []; 
-    let allBorrowedItems = []; 
+    let html5QrCode = null;
     let myPieChart = null;
     let myBarChart = null;
-    let currentManageItems = [];
-    let html5QrCode = null;
-    window.allItems = []; 
     
-    let dataCacheFlags = { items: true, return: true, history: true, stats: true };
-    function markDataStale() { dataCacheFlags = { items: true, return: true, history: true, stats: true }; }
+    // In-memory Data Cache
+    window.allItems = []; 
+    window.allBorrowedItems = [];
+    window.allStats = {};
 
-    window.onload = () => { showView('items-view'); };
+    // --- Core Logic : Fetch All & Render ---
+    window.onload = async () => { 
+        await fetchAllData();
+        showView('items-view'); 
+    };
 
+    // ดึงข้อมูลทั้งหมดรวดเดียวจบ (Pre-fetching)
+    async function fetchAllData() {
+      showLoader();
+      try {
+        const [items, borrowed, stats] = await Promise.all([
+          AppDB.getItems(),
+          AppDB.getBorrowedItems(),
+          AppDB.getStats()
+        ]);
+        window.allItems = items || [];
+        window.allBorrowedItems = borrowed || [];
+        window.allStats = stats || {};
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        showAlert("ดึงข้อมูลไม่สำเร็จ กรุณารีเฟรชหน้าเว็บ", "error");
+      }
+      hideLoader();
+    }
+
+    // ฟังก์ชันช่วยอัปเดตหน้าจอที่กำลังเปิดอยู่ทันที
+    function refreshActiveView() {
+      const activeView = document.querySelector('.view.active');
+      if (!activeView) return;
+      const viewId = activeView.id;
+
+      if (viewId === 'items-view') displayItems();
+      else if (viewId === 'return-view') renderReturnTable();
+      else if (viewId === 'history-view') renderHistoryTable();
+      else if (viewId === 'stats-view') displayStats();
+    }
+
+    // การสลับหน้า (เปลี่ยนได้ทันที ไม่ต้องรอโหลด)
     const views = document.querySelectorAll('.view');
     const navButtons = document.querySelectorAll('.nav-btn');
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
       btn.addEventListener('click', (e) => { showView(e.target.dataset.view); });
     });
 
-    async function showView(viewId) {
+    function showView(viewId) {
       views.forEach(v => v.classList.remove('active'));
       document.getElementById(viewId).classList.add('active');
       navButtons.forEach(btn => btn.classList.remove('active'));
@@ -309,12 +344,11 @@
       const targetBtn = document.querySelector(`[data-view="${viewId}"]`);
       if(targetBtn) targetBtn.classList.add('active');
 
-      if(viewId === 'items-view' && dataCacheFlags.items) await loadItems();
-      else if(viewId === 'return-view' && dataCacheFlags.return) await loadReturnItems();
-      else if(viewId === 'history-view' && dataCacheFlags.history) await loadHistory();
-      else if(viewId === 'stats-view' && dataCacheFlags.stats) await loadStats();
+      // เรนเดอร์หน้าจอนั้นจากหน่วยความจำทันที
+      refreshActiveView();
     }
 
+    // --- Helper Functions ---
     function showLoader() { document.getElementById('loader').style.display = 'flex'; }
     function hideLoader() { document.getElementById('loader').style.display = 'none'; }
     function showAlert(msg, icon='success') { Swal.fire({ title: icon==='success'?'สำเร็จ!':'แจ้งเตือน!', text: msg, icon: icon }); }
@@ -323,6 +357,7 @@
     
     document.querySelectorAll('.close-btn[data-modal]').forEach(btn => { btn.addEventListener('click', () => hideModal(btn.dataset.modal)); });
 
+    // --- Search Logic ---
     document.getElementById('search-input').addEventListener('input', function(e) {
       const searchTerm = e.target.value.toLowerCase();
       document.querySelectorAll('.item-card').forEach(card => {
@@ -339,17 +374,11 @@
       });
     });
 
-    async function loadItems() { 
-      showLoader(); 
-      const items = await AppDB.getItems();
-      displayItems(items);
-    }
-
-    function displayItems(items) {
-      dataCacheFlags.items = false; 
-      window.allItems = items || []; 
+    // --- Items View (ยืมของ) ---
+    function displayItems() {
+      const items = window.allItems;
       const grid = document.getElementById('items-grid'); grid.innerHTML = '';
-      if (!items || items.length === 0 || items.error) { grid.innerHTML = '<p>ไม่พบอุปกรณ์ หรือการเชื่อมต่อล้มเหลว</p>'; hideLoader(); return; }
+      if (!items || items.length === 0 || items.error) { grid.innerHTML = '<p>ไม่พบอุปกรณ์ หรือการเชื่อมต่อล้มเหลว</p>'; return; }
       
       items.forEach(item => {
         const inCart = cart.find(c => c.id == item.id);
@@ -366,7 +395,6 @@
         card.innerHTML = `<img src="${item.image}"><div class="item-card-content"><h3>${item.name}</h3><p>${item.description}</p><div class="item-card-footer"><div>${statusHtml}</div><div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div style="display:flex; align-items:center; gap:4px;">${labelHtml}${qtyInputHtml}</div><button id="add-btn-${item.id}" class="btn ${inCart ? 'btn-secondary selected' : 'btn-primary'}" style="flex-grow: 1;" ${item.availableQuantity <= 0 ? 'disabled' : ''} onclick="toggleCart(${item.id}, '${item.name}', ${item.availableQuantity})">${inCart ? 'เอาออก' : 'ใส่ตะกร้า'}</button></div></div></div>`;
         grid.appendChild(card);
       });
-      hideLoader();
     }
 
     document.getElementById('cart-toggle-btn').addEventListener('click', () => { document.getElementById('cart-container').classList.add('open'); });
@@ -416,23 +444,19 @@
       const res = await AppDB.processBorrow(payload);
       hideLoader(); 
       if(res.success) { 
-          showAlert('บันทึกการยืมเข้า Google Sheets เรียบร้อย!'); hideModal('borrow-modal'); cart = []; updateCartUI(); markDataStale(); 
-          await loadItems(); 
+          showAlert('บันทึกการยืมเข้า Google Sheets เรียบร้อย!'); 
+          hideModal('borrow-modal'); 
+          cart = []; 
+          updateCartUI(); 
+          // รีเฟรชข้อมูลทั้งหมดเบื้องหลัง และวาดหน้าจอใหม่
+          await fetchAllData(); 
+          refreshActiveView(); 
       } else { showAlert(res.error, 'error'); }
     });
 
-    async function loadReturnItems() {
-      showLoader();
-      window.allItems = await AppDB.getItems();
-      const data = await AppDB.getBorrowedItems();
-      allBorrowedItems = data || []; 
-      dataCacheFlags.return = false; 
-      document.getElementById('return-search-input').value = ''; 
-      renderReturnTable(allBorrowedItems); 
-      hideLoader();
-    }
-
-    function renderReturnTable(items) {
+    // --- Return View (คืนของ) ---
+    function renderReturnTable() {
+      const items = window.allBorrowedItems;
       const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
       if(!items || items.length === 0) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">ไม่มีรายการที่ต้องคืน</td></tr>`; return; }
       
@@ -492,17 +516,20 @@
           showLoader(); 
           const res = await AppDB.returnItems(returnPayload);
           hideLoader();
-          if(res.success){ showAlert(res.message); markDataStale(); await loadReturnItems(); } else { showAlert(res.error, 'error'); }
+          if(res.success){ 
+             showAlert(res.message); 
+             // อัปเดตข้อมูลแบบเบื้องหลังหลังทำงานสำเร็จ
+             await fetchAllData(); 
+             refreshActiveView();
+          } else { showAlert(res.error, 'error'); }
         } 
       }); 
     });
 
-    async function loadStats() {
-      showLoader(); 
-      const stats = await AppDB.getStats();
-      dataCacheFlags.stats = false; 
-      hideLoader();
-      if(stats.error) { showAlert(stats.error, 'error'); return; }
+    // --- Stats & History View ---
+    function displayStats() {
+      const stats = window.allStats;
+      if(!stats || stats.error || !stats.itemUsageStats) { return; }
       
       document.getElementById('stats-grid').innerHTML = `
         <div class="stat-card"><div class="value">${stats.totalItems}</div><div class="label">ทั้งหมด (ชิ้น)</div></div>
@@ -517,16 +544,15 @@
          </tr>`; 
       });
 
-      renderHistoryTable(stats.rawHistory);
-
       if(myPieChart) myPieChart.destroy(); if(myBarChart) myBarChart.destroy();
       myPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), { type: 'doughnut', data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems, stats.borrowedItems, stats.totalConsumed], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] } });
-      const topItems = stats.mostBorrowedItems.slice(0, 5);
+      const topItems = (stats.mostBorrowedItems || []).slice(0, 5);
       myBarChart = new Chart(document.getElementById('topItemsBarChart').getContext('2d'), { type: 'bar', data: { labels: topItems.map(i => i.name), datasets: [{ label: 'จำนวนครั้งที่ถูกยืม', data: topItems.map(i => i.count), backgroundColor: '#3b82f6' }] } });
     }
 
-    function renderHistoryTable(history) {
-      dataCacheFlags.history = false; const container = document.getElementById('history-table-container');
+    function renderHistoryTable() {
+      const history = window.allStats.rawHistory;
+      const container = document.getElementById('history-table-container');
       if(!history || history.length === 0) { container.innerHTML = '<p style="text-align:center;">ไม่มีประวัติ</p>'; return; }
       let html = `<table><thead><tr><th>รหัส</th><th>ผู้ยืม</th><th>ชื่ออุปกรณ์</th><th>จำนวนยืม</th><th>วันที่ยืม</th><th>สถานะ</th><th>วันที่คืนจริง</th></tr></thead><tbody id="hist-body">`;
       history.forEach(h => {
@@ -536,25 +562,26 @@
       container.innerHTML = html + `</tbody></table>`;
     }
 
-    async function loadHistory() {
-      if(dataCacheFlags.history) { showLoader(); const stats = await AppDB.getStats(); renderHistoryTable(stats.rawHistory); hideLoader(); }
+    function exportStatsToPDF() {
+      showLoader(); const el = document.getElementById('usage-stats-container');
+      html2pdf().set({ margin:10, filename:'สถิติอุปกรณ์.pdf', html2canvas:{scale:2}, jsPDF:{format:'a4', orientation:'landscape'} }).from(el).save().then(() => { hideLoader(); showAlert('ดาวน์โหลดสำเร็จ!'); });
     }
 
+    // --- Admin Manage Items ---
     document.getElementById('show-manage-modal-btn').addEventListener('click', () => {
       Swal.fire({ title: 'สิทธิ์แอดมิน', input: 'password', showCancelButton: true, confirmButtonText: 'ตกลง' }).then(async (res) => {
-        if (res.isConfirmed && res.value === '1234') { await loadManageItems(); showModal('manage-items-modal'); }
+        if (res.isConfirmed && res.value === '1234') { 
+           renderManageItemsTable(); 
+           showModal('manage-items-modal'); 
+        }
         else if (res.isConfirmed) { showAlert('รหัสผ่านไม่ถูกต้อง', 'error'); }
       });
     });
 
-    async function loadManageItems() {
-         showLoader(); currentManageItems = await AppDB.getItems(); renderManageItemsTable(); hideLoader(); 
-    }
-
     function renderManageItemsTable() {
          const container = document.getElementById('manage-items-table-container');
          let html = `<table><thead><tr><th>รูป</th><th>ชื่ออุปกรณ์</th><th>สต็อกเริ่ม</th><th>พร้อมยืม</th><th>จัดการ</th></tr></thead><tbody>`;
-         currentManageItems.forEach(item => {
+         window.allItems.forEach(item => {
             html += `<tr><td><img src="${item.image}" style="width:30px; height:30px; object-fit:contain;"></td><td>${item.name}</td><td>${item.totalQuantity}</td><td>${item.availableQuantity}</td><td><button class="btn btn-edit" onclick="editItem('${item.id}')">แก้ไข</button><button class="btn btn-delete" onclick="deleteItem('${item.id}')">ลบ</button></td></tr>`;
          });
          container.innerHTML = html + `</tbody></table>`;
@@ -565,7 +592,7 @@
     });
 
     function editItem(id) {
-         const item = currentManageItems.find(i => i.id == id); if(!item) return;
+         const item = window.allItems.find(i => i.id == id); if(!item) return;
          document.getElementById('item-id').value = item.id; document.getElementById('item-name').value = item.name; document.getElementById('item-description').value = item.description; document.getElementById('item-quantity').value = item.totalQuantity;
          document.getElementById('image-preview').src = item.image; document.getElementById('image-preview').style.display = 'block'; document.getElementById('item-image-base64').value = item.image;
          hideModal('manage-items-modal'); showModal('item-form-modal');
@@ -575,7 +602,12 @@
         Swal.fire({ title: 'ลบอุปกรณ์?', icon: 'warning', showCancelButton: true }).then(async (r) => {
             if (r.isConfirmed) { 
               showLoader(); const res = await AppDB.deleteItem(id); hideLoader(); 
-              if(res.success) { showAlert('ลบสำเร็จ!'); markDataStale(); await loadManageItems(); }
+              if(res.success) { 
+                 showAlert('ลบสำเร็จ!'); 
+                 await fetchAllData();
+                 refreshActiveView();
+                 if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
+              }
             }
         });
     }
@@ -589,14 +621,16 @@
         e.preventDefault(); const id = document.getElementById('item-id').value;
         const payload = { id: id || null, name: document.getElementById('item-name').value, description: document.getElementById('item-description').value, quantity: document.getElementById('item-quantity').value, image: document.getElementById('item-image-base64').value };
         showLoader(); const res = id ? await AppDB.updateItem(payload) : await AppDB.addItem(payload); hideLoader();
-        if(res.success) { showAlert('บันทึกสำเร็จ!'); hideModal('item-form-modal'); showModal('manage-items-modal'); markDataStale(); await loadManageItems(); }
+        if(res.success) { 
+           showAlert('บันทึกสำเร็จ!'); 
+           hideModal('item-form-modal'); showModal('manage-items-modal'); 
+           await fetchAllData();
+           refreshActiveView();
+           if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
+        }
     });
 
-    function exportStatsToPDF() {
-      showLoader(); const el = document.getElementById('usage-stats-container');
-      html2pdf().set({ margin:10, filename:'สถิติอุปกรณ์.pdf', html2canvas:{scale:2}, jsPDF:{format:'a4', orientation:'landscape'} }).from(el).save().then(() => { hideLoader(); showAlert('ดาวน์โหลดสำเร็จ!'); });
-    }
-
+    // --- QR Scanner ---
     document.getElementById('scan-qr-btn').addEventListener('click', () => { showModal('qr-modal'); startScanner(); });
     document.getElementById('close-qr-btn').addEventListener('click', () => { stopScanner(); });
 
