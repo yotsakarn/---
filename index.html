@@ -2,7 +2,7 @@
 <html>
 <head>
   <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</title>
 
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
@@ -22,6 +22,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
   
   <style>
+    /* 1. ล็อคขนาดกล่องทุกชนิดไม่ให้บวมล้นหน้าจอ */
+    * { 
+      box-sizing: border-box; 
+    }
+
     :root { 
       --primary-color: #4a69bd; 
       --secondary-color: #6a89cc; 
@@ -35,31 +40,73 @@
     }
     
     body, button, input, textarea, select { font-family: 'Prompt', sans-serif; margin: 0; font-size: 18px; }
-    body { background-color: var(--light-gray); color: var(--text-color); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    
+    /* 2. บล็อกการเลื่อนซ้าย-ขวาของตัวเว็บทั้งหมด */
+    body { 
+      background-color: var(--light-gray); 
+      color: var(--text-color); 
+      display: flex; 
+      flex-direction: column; 
+      height: 100vh; 
+      overflow-x: hidden;
+      overflow-y: hidden; 
+    }
+    
     .sticky-header { flex-shrink: 0; width: 100%; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); z-index: 1000; background-color: var(--white); }
     header { background-color: var(--primary-color); color: var(--white); padding: 15px 0; text-align: center; }
-    header h1 { margin: 0; font-size: 2em; }
+    header h1 { margin: 0; font-size: 1.5em; }
     nav { border-bottom: 1px solid #e5e7eb; padding: 10px 0; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
     .nav-btn { padding: 8px 16px; border: 1px solid var(--secondary-color); background-color: var(--white); color: var(--primary-color); cursor: pointer; border-radius: 5px; transition: all 0.2s; font-size: 1em; }
     .nav-btn:hover, .nav-btn.active { background-color: var(--primary-color); color: var(--white); }
-    .container { width: 95%; max-width: 1200px; margin: 0 auto; }
-    main.container { flex-grow: 1; overflow-y: auto; padding-top: 0; padding-bottom: 20px; }
+    
+    .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 15px; }
+    main.container { flex-grow: 1; overflow-y: auto; overflow-x: hidden; padding-top: 0; padding-bottom: 20px; }
+    
     .view { display: none; }
     .view.active { display: block; }
-    .search-bar { position: sticky; top: 0; z-index: 990; background-color: var(--light-gray); padding: 10px 0; margin-bottom: 10px; display: flex; gap: 10px; border-bottom: 2px solid #e5e7eb; }
-    .search-bar input[type="text"] { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; }
-    #items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
-    .item-card { background-color: var(--white); border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; }
+    
+    .search-bar { position: sticky; top: 0; z-index: 990; background-color: var(--light-gray); padding: 10px 0; margin-bottom: 10px; display: flex; gap: 10px; border-bottom: 2px solid #e5e7eb; width: 100%; }
+    .search-bar input[type="text"] { flex-grow: 1; min-width: 0; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; }
+    
+    /* 3. ล็อคขนาด Grid ให้สมมาตรคงที่ */
+    #items-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+      gap: 15px; 
+      width: 100%;
+    }
+    
+    .item-card { background-color: var(--white); border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; height: 100%; }
     .item-card:hover { transform: translateY(-5px); }
-    .item-card img { width: 100%; height: 130px; object-fit: contain; background-color: #f9fafb; padding: 10px; box-sizing: border-box; }
-    .item-card-content { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; }
-    .item-card h3 { margin: 0 0 8px 0; font-size: 1.2em; }
-    .item-card p { margin: 0 0 12px 0; color: var(--dark-gray); flex-grow: 1; font-size: 0.95em; line-height: 1.4; }
+    .item-card img { width: 100%; height: 130px; object-fit: contain; background-color: #f9fafb; padding: 10px; }
+    .item-card-content { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    
+    /* 4. ล็อคตัวหนังสือยาวๆ ไม่ให้ดันกล่องเพี้ยน */
+    .item-card h3 { 
+      margin: 0 0 6px 0; 
+      font-size: 1.1em; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+    }
+    .item-card p { 
+      margin: 0 0 12px 0; 
+      color: var(--dark-gray); 
+      font-size: 0.9em; 
+      line-height: 1.4; 
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      height: 2.8em; /* ฟิกความสูงคำอธิบายไว้ให้เท่ากันทุกการ์ด */
+    }
+    
     .item-card-footer { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
     .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 0.8em; font-weight: bold; display: inline-block; }
     .status-available { background-color: #d1fae5; color: #065f46; }
     .status-borrowed { background-color: #fee2e2; color: #991b1b; }
     .status-warning { background-color: #fef3c7; color: #92400e; }
+    
     #cart-container { position: fixed; right: 0; top: 0; width: 100%; max-width: 320px; height: 100%; background-color: var(--white); box-shadow: -2px 0 5px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.3s ease-in-out; display: flex; flex-direction: column; z-index: 1001; }
     #cart-container.open { transform: translateX(0); }
     #cart-header { padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 1.1em; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
@@ -67,6 +114,7 @@
     .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 8px; border-bottom: 1px dashed #eee; gap: 8px; }
     .cart-item button.remove-btn { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1.3em; font-weight: bold; }
     #cart-footer { padding: 12px; border-top: 1px solid #e5e7eb; }
+    
     .btn { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: background-color 0.2s; font-size: 0.95em; }
     .btn-primary { background-color: var(--primary-color); color: var(--white); }
     .btn-primary:hover { background-color: var(--secondary-color); }
@@ -75,25 +123,31 @@
     .btn-secondary.selected { background-color: var(--warning); }
     .btn-edit { background-color: var(--warning); color: var(--white); font-size: 11px; padding: 4px 8px; margin-right: 4px; }
     .btn-delete { background-color: var(--danger); color: var(--white); font-size: 11px; padding: 4px 8px; }
-    .table-container { overflow-x: auto; background-color: var(--white); border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); margin-top: 8px; margin-bottom: 8px; }
+    
+    .table-container { overflow-x: auto; background-color: var(--white); border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); margin-top: 8px; margin-bottom: 8px; width: 100%; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
     thead th { position: sticky; top: 0; background-color: var(--primary-color); z-index: 10; color: var(--white); padding: 10px 8px; text-align: left; }
     td { padding: 10px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
     tbody tr:hover { background-color: #f8fafc; }
+    
     .qty-input-group input { width: 50px; padding: 4px; border-radius: 4px; border: 1px solid #ccc; text-align: center; font-size: 14px; }
     .qty-input-group input[readonly] { background-color: #eee; color: #888; }
     .highlight-input { border: 2px solid var(--warning) !important; background-color: #fffbeb !important; }
+    
     .modal { display: none; position: fixed; z-index: 1002; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
     .modal-content { background-color: var(--white); margin: 10% auto; padding: 15px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 8px; }
     .modal-content.modal-lg { max-width: 900px; }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px; }
     .close-btn { color: #aaa; font-size: 24px; font-weight: bold; cursor: pointer; }
+    
     .form-group { margin-bottom: 12px; }
     .form-group label { display: block; margin-bottom: 4px; font-size: 0.9em; }
-    .form-group input:not([type="checkbox"]):not([type="radio"]), .form-group textarea { width: 92%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; }
+    .form-group input:not([type="checkbox"]):not([type="radio"]), .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; }
+    
     #loader { position: fixed; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.7); z-index: 9999; display: flex; justify-content: center; align-items: center; }
     .spinner { border: 6px solid #f3f3f3; border-top: 6px solid var(--primary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
     #stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
     .stat-card { background-color: var(--white); padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
@@ -101,10 +155,16 @@
     
     @media (max-width: 768px) {
       body, button, input, textarea, select { font-size: 16px; }
-      header h1 { font-size: 1.5em; }
+      header h1 { font-size: 1.3em; }
       nav { gap: 5px; }
-      .nav-btn { font-size: 0.9em; padding: 6px 10px; }
-      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+      .nav-btn { font-size: 0.85em; padding: 6px 10px; }
+      /* ล็อคให้แบ่ง 2 ฝั่งสมบูรณ์แบบไม่ขยับซ้ายขวาบนมือถือ */
+      #items-grid { 
+        grid-template-columns: repeat(2, 1fr) !important; 
+        gap: 10px !important; 
+      }
+      .item-card h3 { font-size: 1em; }
+      .item-card p { font-size: 0.8em; height: 2.8em; }
     }
   </style>
 </head>
@@ -298,7 +358,6 @@
         showView('items-view'); 
     };
 
-    // ดึงข้อมูลทั้งหมดรวดเดียวจบ (Pre-fetching)
     async function fetchAllData() {
       showLoader();
       try {
@@ -317,7 +376,6 @@
       hideLoader();
     }
 
-    // ฟังก์ชันช่วยอัปเดตหน้าจอที่กำลังเปิดอยู่ทันที
     function refreshActiveView() {
       const activeView = document.querySelector('.view.active');
       if (!activeView) return;
@@ -329,7 +387,6 @@
       else if (viewId === 'stats-view') displayStats();
     }
 
-    // การสลับหน้า (เปลี่ยนได้ทันที ไม่ต้องรอโหลด)
     const views = document.querySelectorAll('.view');
     const navButtons = document.querySelectorAll('.nav-btn');
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
@@ -344,7 +401,6 @@
       const targetBtn = document.querySelector(`[data-view="${viewId}"]`);
       if(targetBtn) targetBtn.classList.add('active');
 
-      // เรนเดอร์หน้าจอนั้นจากหน่วยความจำทันที
       refreshActiveView();
     }
 
@@ -359,7 +415,6 @@
       btn.addEventListener('click', () => hideModal(btn.dataset.modal)); 
     });
 
-    // หน้าต่างแก้ไขอุปกรณ์พากลับไปหน้าจอตารางรวม
     document.getElementById('close-item-form-btn').addEventListener('click', () => {
       hideModal('item-form-modal');
       showModal('manage-items-modal');
