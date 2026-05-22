@@ -298,7 +298,6 @@
         showView('items-view'); 
     };
 
-    // ดึงข้อมูลทั้งหมดรวดเดียวจบ (Pre-fetching)
     async function fetchAllData() {
       showLoader();
       try {
@@ -317,7 +316,6 @@
       hideLoader();
     }
 
-    // ฟังก์ชันช่วยอัปเดตหน้าจอที่กำลังเปิดอยู่ทันที
     function refreshActiveView() {
       const activeView = document.querySelector('.view.active');
       if (!activeView) return;
@@ -329,7 +327,6 @@
       else if (viewId === 'stats-view') displayStats();
     }
 
-    // การสลับหน้า (เปลี่ยนได้ทันที ไม่ต้องรอโหลด)
     const views = document.querySelectorAll('.view');
     const navButtons = document.querySelectorAll('.nav-btn');
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
@@ -344,7 +341,6 @@
       const targetBtn = document.querySelector(`[data-view="${viewId}"]`);
       if(targetBtn) targetBtn.classList.add('active');
 
-      // เรนเดอร์หน้าจอนั้นจากหน่วยความจำทันที
       refreshActiveView();
     }
 
@@ -367,7 +363,6 @@
       });
     });
 
-    // ซ่อมแซมฟังก์ชันการค้นหาในหน้าคืนของที่ถูกตัดขาดให้สมบูรณ์
     document.getElementById('return-search-input').addEventListener('input', function(e) {
       const searchTerm = e.target.value.toLowerCase();
       document.querySelectorAll('#return-items-body tr').forEach(row => {
@@ -375,7 +370,6 @@
       });
     });
 
-    // เพิ่มฟังก์ชันค้นหาในหน้าประวัติให้ด้วย (รองรับ search-bar ที่ถูกเตรียมไว้ใน HTML)
     document.getElementById('history-search-input').addEventListener('input', function(e) {
       const searchTerm = e.target.value.toLowerCase();
       document.querySelectorAll('#hist-body tr').forEach(row => {
@@ -457,7 +451,6 @@
           hideModal('borrow-modal'); 
           cart = []; 
           updateCartUI(); 
-          // รีเฟรชข้อมูลทั้งหมดเบื้องหลัง และวาดหน้าจอใหม่
           await fetchAllData(); 
           refreshActiveView(); 
       } else { showAlert(res.error, 'error'); }
@@ -527,7 +520,6 @@
           hideLoader();
           if(res.success){ 
              showAlert(res.message); 
-             // อัปเดตข้อมูลแบบเบื้องหลังหลังทำงานสำเร็จ
              await fetchAllData(); 
              refreshActiveView();
           } else { showAlert(res.error, 'error'); }
@@ -639,65 +631,73 @@
         }
     });
 
-    // --- QR Scanner (แก้ไขระบบเปิดกล้องอัจฉริยะ ป้องกันข้อผิดพลาด) ---
+    // --- QR Scanner (แก้ไขระบบตรวจจับรายชื่อกล้องอัจฉริยะ ป้องกันการค้างบนคอมพิวเตอร์) ---
     document.getElementById('scan-qr-btn').addEventListener('click', () => { showModal('qr-modal'); startScanner(); });
     document.getElementById('close-qr-btn').addEventListener('click', () => { stopScanner(); });
 
     function startScanner() {
-      // เคลียร์ค่าระบบเดิมทิ้งก่อนเพื่อความปลอดภัย
       if (html5QrCode) {
-         html5QrCode.clear().catch(err => console.log(err));
+        html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {}).finally(() => {
+          initAndStartCamera();
+        });
+      } else {
+        initAndStartCamera();
       }
+    }
 
+    function initAndStartCamera() {
       html5QrCode = new Html5Qrcode("reader");
       const qrboxSize = window.innerWidth < 500 ? 250 : 300;
 
-      // ขั้นตอนที่ 1: ทดลองเปิดกล้องหลังก่อน (สำหรับโทรศัพท์มือถือ)
+      // เรียกดึงรายชื่อกล้องทั้งหมดที่มีในอุปกรณ์ก่อนเปิด เพื่อดูว่ารันบน PC หรือ มือถือ
+      Html5Qrcode.getCameras().then(devices => {
+        if (!devices || devices.length === 0) {
+          // หากไม่พบรายชื่อกล้อง ให้เบราว์เซอร์สุ่มเปิดตามความเหมาะสม
+          startCameraWithConfig({ facingMode: "environment" }, qrboxSize);
+          return;
+        }
+
+        // ค้นหาหาตำแหน่งกล้องหลัง (สำหรับกรณีเปิดผ่านมือถือ)
+        let selectedCameraId = devices[0].id; // ตั้งค่าเริ่มต้นเป็นกล้องแรก (เช่น Webcam บนคอม)
+        for (const device of devices) {
+          const label = device.label.toLowerCase();
+          if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
+            selectedCameraId = device.id;
+            break;
+          }
+        }
+
+        startCameraWithConfig(selectedCameraId, qrboxSize);
+      }).catch(err => {
+        console.warn("getCameras failed, trying direct facingMode fallback:", err);
+        // กรณีดึงลิสต์ไม่ได้ ให้ fallback สั่งเปิดกล้องตรง ๆ
+        startCameraWithConfig({ facingMode: "environment" }, qrboxSize);
+      });
+    }
+
+    function startCameraWithConfig(cameraConfig, qrboxSize) {
       html5QrCode.start(
-        { 
-          facingMode: "environment",
-          advanced: [{ focusMode: "continuous" }] 
-        }, 
-        { 
-          fps: 30, 
-          qrbox: { width: qrboxSize, height: qrboxSize }, 
-          aspectRatio: 1.0, 
-          disableFlip: false 
-        }, 
-        onScanSuccess, 
+        cameraConfig,
+        {
+          fps: 25,
+          qrbox: { width: qrboxSize, height: qrboxSize }
+          // นำ advanced focus และ aspect ratio ล็อก 1.0 ออก เพื่อไม่ให้เกิด OverconstrainedError บนเว็บแคมของคอมพิวเตอร์
+        },
+        onScanSuccess,
         onScanFailure
-      )
-      .catch((err) => { 
-        console.warn("ไม่พบกล้องหลัง หรือกำลังรันบนคอมพิวเตอร์ ระบบจะลองเปลี่ยนไปใช้กล้องหน้า/Webcam...");
+      ).catch(err => {
+        console.error("Primary camera mode failed, trying ultra-safe mode...", err);
         
-        // ขั้นตอนที่ 2: หากเปิดกล้องหลังไม่สำเร็จ (เช่นเล่นบน PC) ค้นหากล้องทั้งหมดที่มีในอุปกรณ์
-        Html5Qrcode.getCameras().then(devices => {
-            if (devices && devices.length > 0) {
-                // เลือกอุปกรณ์กล้องตัวแรกที่ระบบหาเจอมาใช้งานทันที (Webcam ของคอมฯ)
-                const cameraId = devices[0].id;
-                html5QrCode.start(
-                    cameraId, 
-                    { 
-                      fps: 30, 
-                      qrbox: { width: qrboxSize, height: qrboxSize }, 
-                      aspectRatio: 1.0, 
-                      disableFlip: false 
-                    },
-                    onScanSuccess,
-                    onScanFailure
-                ).catch(err2 => {
-                    console.error("Camera Error Ultimate:", err2);
-                    showAlert("ไม่สามารถเปิดกล้องได้ อาจถูกใช้งานโดยโปรแกรมอื่นอยู่ (เช่น Zoom, Meet)", "error");
-                    hideModal('qr-modal');
-                });
-            } else {
-                showAlert("ไม่พบอุปกรณ์กล้องเชื่อมต่อกับเครื่องนี้", "error");
-                hideModal('qr-modal');
-            }
-        }).catch(err3 => {
-            console.error("Get Cameras Error:", err3);
-            showAlert("ไม่สามารถเข้าถึงระบบกล้องได้ กรุณาตรวจสอบสิทธิ์", "error"); 
-            hideModal('qr-modal'); 
+        // แผนสำรองสุดท้าย: เปิดกล้องแบบไร้เงื่อนไขข้อจำกัดใดๆ (โหมดปลอดภัยที่สุดสำหรับกล้องคอมพิวเตอร์รุ่นเก่า)
+        html5QrCode.start(
+          cameraConfig,
+          { fps: 15, qrbox: qrboxSize },
+          onScanSuccess,
+          onScanFailure
+        ).catch(finalErr => {
+          console.error("Camera completely failed:", finalErr);
+          showAlert("ไม่สามารถเปิดกล้องได้: โปรดตรวจสอบว่าไม่มีแอปอื่นแอบสลับใช้กล้องอยู่ (เช่น Line, Zoom, Meet) หรือลองทำการปิด-เปิดเว็บเบราว์เซอร์ใหม่อีกครั้งครับ", "error");
+          hideModal('qr-modal');
         });
       });
     }
@@ -707,15 +707,12 @@
     function onScanSuccess(decodedText) {
       stopScanner();
       const scannedId = decodedText.trim();
-      // ค้นหาว่า ID หรือ ชื่อ ตรงกับที่สแกนมาหรือไม่
       const item = window.allItems.find(i => i.id == scannedId || i.name.toLowerCase() == scannedId.toLowerCase());
 
       if (item) {
-         // 1. นำชื่ออุปกรณ์ที่สแกนเจอ ไปใส่ในช่องค้นหา
          const searchInput = document.getElementById('search-input');
          searchInput.value = item.name;
 
-         // 2. สั่งให้ระบบค้นหา (Filter) ทำงานทันทีเหมือนเราพิมพ์เอง
          const event = new Event('input', { bubbles: true });
          searchInput.dispatchEvent(event);
 
