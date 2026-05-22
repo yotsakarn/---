@@ -367,9 +367,18 @@
       });
     });
 
+    // ซ่อมแซมฟังก์ชันการค้นหาในหน้าคืนของที่ถูกตัดขาดให้สมบูรณ์
     document.getElementById('return-search-input').addEventListener('input', function(e) {
       const searchTerm = e.target.value.toLowerCase();
       document.querySelectorAll('#return-items-body tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+      });
+    });
+
+    // เพิ่มฟังก์ชันค้นหาในหน้าประวัติให้ด้วย (รองรับ search-bar ที่ถูกเตรียมไว้ใน HTML)
+    document.getElementById('history-search-input').addEventListener('input', function(e) {
+      const searchTerm = e.target.value.toLowerCase();
+      document.querySelectorAll('#hist-body tr').forEach(row => {
         row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
       });
     });
