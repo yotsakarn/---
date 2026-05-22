@@ -516,7 +516,7 @@
       const res = await AppDB.processBorrow(payload);
       hideLoader(); 
       if(res.success) { 
-          showAlert('ยืมสำเร็จ'); /* แก้ไขข้อความแจ้งเตือนตามที่ขอเรียบร้อยครับ */
+          showAlert('ยืมสำเร็จ'); 
           hideModal('borrow-modal'); 
           cart = []; 
           updateCartUI(); 
@@ -529,7 +529,12 @@
     function renderReturnTable() {
       const items = window.allBorrowedItems;
       const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
-      if(!items || items.length === 0) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">ไม่มีรายการที่ต้องคืน</td></tr>`; return; }
+      
+      if(!items || items.length === 0) { 
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">ไม่มีรายการที่ต้องคืน</td></tr>`; 
+        updateReturnCount(); 
+        return; 
+      }
       
       items.forEach(item => {
         const qty = item.borrowQty || 1; 
