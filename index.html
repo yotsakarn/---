@@ -22,11 +22,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
   
   <style>
-    /* 1. ล็อคขนาดกล่องทุกชนิดไม่ให้บวมล้นหน้าจอ */
-    * { 
-      box-sizing: border-box; 
-    }
-
+    * { box-sizing: border-box; }
     :root { 
       --primary-color: #4a69bd; 
       --secondary-color: #6a89cc; 
@@ -38,10 +34,7 @@
       --danger: #ef4444; 
       --warning: #f59e0b; 
     }
-    
     body, button, input, textarea, select { font-family: 'Prompt', sans-serif; margin: 0; font-size: 18px; }
-    
-    /* 2. บล็อกการเลื่อนซ้าย-ขวาของตัวเว็บทั้งหมด */
     body { 
       background-color: var(--light-gray); 
       color: var(--text-color); 
@@ -51,7 +44,6 @@
       overflow-x: hidden;
       overflow-y: hidden; 
     }
-    
     .sticky-header { flex-shrink: 0; width: 100%; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); z-index: 1000; background-color: var(--white); }
     header { background-color: var(--primary-color); color: var(--white); padding: 15px 0; text-align: center; }
     header h1 { margin: 0; font-size: 1.5em; }
@@ -68,39 +60,13 @@
     .search-bar { position: sticky; top: 0; z-index: 990; background-color: var(--light-gray); padding: 10px 0; margin-bottom: 10px; display: flex; gap: 10px; border-bottom: 2px solid #e5e7eb; width: 100%; }
     .search-bar input[type="text"] { flex-grow: 1; min-width: 0; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; }
     
-    /* 3. ล็อคขนาด Grid ให้สมมาตรคงที่ */
-    #items-grid { 
-      display: grid; 
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
-      gap: 15px; 
-      width: 100%;
-    }
-    
+    #items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; width: 100%; }
     .item-card { background-color: var(--white); border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; height: 100%; }
     .item-card:hover { transform: translateY(-5px); }
     .item-card img { width: 100%; height: 130px; object-fit: contain; background-color: #f9fafb; padding: 10px; }
     .item-card-content { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-    
-    /* 4. ล็อคตัวหนังสือยาวๆ ไม่ให้ดันกล่องเพี้ยน */
-    .item-card h3 { 
-      margin: 0 0 6px 0; 
-      font-size: 1.1em; 
-      white-space: nowrap; 
-      overflow: hidden; 
-      text-overflow: ellipsis; 
-    }
-    .item-card p { 
-      margin: 0 0 12px 0; 
-      color: var(--dark-gray); 
-      font-size: 0.9em; 
-      line-height: 1.4; 
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      height: 2.8em; /* ฟิกความสูงคำอธิบายไว้ให้เท่ากันทุกการ์ด */
-    }
-    
+    .item-card h3 { margin: 0 0 6px 0; font-size: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-card p { margin: 0 0 12px 0; color: var(--dark-gray); font-size: 0.9em; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.8em; }
     .item-card-footer { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
     .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 0.8em; font-weight: bold; display: inline-block; }
     .status-available { background-color: #d1fae5; color: #065f46; }
@@ -158,11 +124,7 @@
       header h1 { font-size: 1.3em; }
       nav { gap: 5px; }
       .nav-btn { font-size: 0.85em; padding: 6px 10px; }
-      /* ล็อคให้แบ่ง 2 ฝั่งสมบูรณ์แบบไม่ขยับซ้ายขวาบนมือถือ */
-      #items-grid { 
-        grid-template-columns: repeat(2, 1fr) !important; 
-        gap: 10px !important; 
-      }
+      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
       .item-card h3 { font-size: 1em; }
       .item-card p { font-size: 0.8em; height: 2.8em; }
     }
@@ -316,19 +278,33 @@
   </div>
 
   <script>
+    // URL ของ Google Apps Script ของคุณ
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzNp3PG-2gADMw5WfFcwrQ0vAcwjnoBR4pzSwTBWrzZ8sgXz_m5f23T5oA-DhWVzRuwpA/exec";
 
+    // อัปเดตฟังก์ชัน AppDB ให้รองรับการเรียกใหม่ (Retry) อัตโนมัติเมื่อคิวเต็ม
     const AppDB = {
-      async callAPI(action, data = {}) {
-        try {
-          const response = await fetch(WEB_APP_URL, {
-            method: "POST",
-            body: JSON.stringify({ action, ...data })
-          });
-          return await response.json();
-        } catch (error) {
-          console.error("API Connection Error:", error);
-          return { success: false, error: "ไม่สามารถเชื่อมต่อ Google Sheets ได้" };
+      async callAPI(action, data = {}, retries = 3) {
+        for (let i = 0; i < retries; i++) {
+          try {
+            const response = await fetch(WEB_APP_URL, {
+              method: "POST",
+              body: JSON.stringify({ action, ...data })
+            });
+            const result = await response.json();
+            
+            // ถ้าสำเร็จ หรือเป็น Error ที่เกิดจากระบบจริงๆ ให้ส่งค่ากลับไปเลย
+            if (result.success || result.error) {
+              return result;
+            }
+          } catch (error) {
+            console.error(`API Connection Error (รอบที่ ${i+1}/${retries}):`, error);
+            // ถ้านี่คือรอบสุดท้ายแล้ว ให้ส่ง Error กลับไปแสดงผล
+            if (i === retries - 1) {
+              return { success: false, error: "เครือข่ายไม่เสถียร หรือคนใช้งานเยอะ กรุณาลองใหม่ครับ" };
+            }
+            // ถ้าระบบขัดข้อง ให้รอ 1 วินาทีก่อนลองใหม่
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
       },
       async getItems() { return await this.callAPI("getItems"); },
@@ -341,18 +317,15 @@
       async getStats() { return await this.callAPI("getStats"); }
     };
 
-    // --- Global State Variables ---
     let cart = []; 
     let html5QrCode = null;
     let myPieChart = null;
     let myBarChart = null;
     
-    // In-memory Data Cache
     window.allItems = []; 
     window.allBorrowedItems = [];
     window.allStats = {};
 
-    // --- Core Logic : Fetch All & Render ---
     window.onload = async () => { 
         await fetchAllData();
         showView('items-view'); 
@@ -380,7 +353,6 @@
       const activeView = document.querySelector('.view.active');
       if (!activeView) return;
       const viewId = activeView.id;
-
       if (viewId === 'items-view') displayItems();
       else if (viewId === 'return-view') renderReturnTable();
       else if (viewId === 'history-view') renderHistoryTable();
@@ -397,14 +369,11 @@
       views.forEach(v => v.classList.remove('active'));
       document.getElementById(viewId).classList.add('active');
       navButtons.forEach(btn => btn.classList.remove('active'));
-      
       const targetBtn = document.querySelector(`[data-view="${viewId}"]`);
       if(targetBtn) targetBtn.classList.add('active');
-
       refreshActiveView();
     }
 
-    // --- Helper Functions ---
     function showLoader() { document.getElementById('loader').style.display = 'flex'; }
     function hideLoader() { document.getElementById('loader').style.display = 'none'; }
     function showAlert(msg, icon='success') { Swal.fire({ title: icon==='success'?'สำเร็จ!':'แจ้งเตือน!', text: msg, icon: icon }); }
@@ -420,7 +389,6 @@
       showModal('manage-items-modal');
     });
 
-    // --- Search Logic ---
     document.getElementById('search-input').addEventListener('input', function(e) {
       const searchTerm = e.target.value.toLowerCase();
       document.querySelectorAll('.item-card').forEach(card => {
@@ -444,7 +412,6 @@
       });
     });
 
-    // --- Items View (ยืมของ) ---
     function displayItems() {
       const items = window.allItems;
       const grid = document.getElementById('items-grid'); grid.innerHTML = '';
@@ -488,8 +455,6 @@
           cart.push({ id: id, name: name || '', maxQty: maxQty || 99, requestQty: reqQty });
       }
       updateCartUI(); 
-      
-      // อัปเดตสถานะปุ่มสีและข้อความหลังการคลิก
       const btn = document.getElementById('add-btn-' + id);
       if(btn) {
           const inCart = cart.findIndex(c => c.id == id) >= 0;
@@ -525,17 +490,14 @@
       } else { showAlert(res.error, 'error'); }
     });
 
-    // --- Return View (คืนของ) ---
     function renderReturnTable() {
       const items = window.allBorrowedItems;
       const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
-      
       if(!items || items.length === 0) { 
         tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">ไม่มีรายการที่ต้องคืน</td></tr>`; 
         updateReturnCount(); 
         return; 
       }
-      
       items.forEach(item => {
         const qty = item.borrowQty || 1; 
         tbody.innerHTML += `<tr>
@@ -569,11 +531,9 @@
     function autoCalcConsumed(id, total) { const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); let v = parseInt(g.value) || 0; if (v > total) v = total; g.value = v; c.value = total - v; }
     function autoCalcGood(id, total) { const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); let v = parseInt(c.value) || 0; if (v > total) v = total; c.value = v; g.value = total - v; }
 
-    // --- Stats & History View ---
     function displayStats() {
       const stats = window.allStats;
       if(!stats || stats.error || !stats.itemUsageStats) { return; }
-      
       document.getElementById('stats-grid').innerHTML = `
         <div class="stat-card"><div class="value">${stats.totalItems}</div><div class="label">ทั้งหมด (ชิ้น)</div></div>
         <div class="stat-card"><div class="value" style="color:var(--success);">${stats.availableItems}</div><div class="label">พร้อมใช้งาน (ชิ้น)</div></div>
@@ -641,7 +601,6 @@
       html2pdf().set({ margin:10, filename:'สถิติอุปกรณ์.pdf', html2canvas:{scale:2}, jsPDF:{format:'a4', orientation:'landscape'} }).from(el).save().then(() => { hideLoader(); showAlert('ดาวน์โหลดสำเร็จ!'); });
     }
 
-    // --- Admin Manage Items ---
     document.getElementById('show-manage-modal-btn').addEventListener('click', () => {
       Swal.fire({ title: 'สิทธิ์แอดมิน', input: 'password', showCancelButton: true, confirmButtonText: 'ตกลง' }).then(async (res) => {
         if (res.isConfirmed && res.value === '1234') { 
@@ -704,7 +663,6 @@
         }
     });
 
-    // --- QR Scanner ---
     document.getElementById('scan-qr-btn').addEventListener('click', () => { showModal('qr-modal'); startScanner(); });
     document.getElementById('close-qr-btn').addEventListener('click', () => { stopScanner(); });
 
@@ -726,17 +684,12 @@
          const searchInput = document.getElementById('search-input');
          searchInput.value = item.name;
          searchInput.dispatchEvent(new Event('input'));
-
-         if (item.availableQuantity > 0) {
-             showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success');
-         } else {
-             showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning');
-         }
+         if (item.availableQuantity > 0) { showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success'); } 
+         else { showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning'); }
       } else {
          showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error');
       }
     }
-    
     function onScanFailure() {}
   </script>
 </body>
