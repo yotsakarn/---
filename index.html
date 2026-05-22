@@ -488,6 +488,8 @@
           cart.push({ id: id, name: name || '', maxQty: maxQty || 99, requestQty: reqQty });
       }
       updateCartUI(); 
+      
+      // อัปเดตสถานะปุ่มสีและข้อความหลังการคลิก
       const btn = document.getElementById('add-btn-' + id);
       if(btn) {
           const inCart = cart.findIndex(c => c.id == id) >= 0;
@@ -514,7 +516,7 @@
       const res = await AppDB.processBorrow(payload);
       hideLoader(); 
       if(res.success) { 
-          showAlert('บันทึกการยืมเข้า Google Sheets เรียบร้อย!'); 
+          showAlert('ยืมสำเร็จ'); /* แก้ไขข้อความแจ้งเตือนตามที่ขอเรียบร้อยครับ */
           hideModal('borrow-modal'); 
           cart = []; 
           updateCartUI(); 
