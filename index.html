@@ -643,14 +643,26 @@
     function stopScanner() { if (html5QrCode) { html5QrCode.stop().then(() => html5QrCode.clear()).catch(e => console.log(e)); } hideModal('qr-modal'); }
 
     function onScanSuccess(decodedText) {
-      stopScanner(); const scannedId = decodedText.trim(); 
+      stopScanner();
+      const scannedId = decodedText.trim();
+      // ค้นหาว่า ID หรือ ชื่อ ตรงกับที่สแกนมาหรือไม่
       const item = window.allItems.find(i => i.id == scannedId || i.name.toLowerCase() == scannedId.toLowerCase());
-      if (item && item.availableQuantity > 0) {
-         if (cart.findIndex(c => c.id == item.id) === -1) {
-             cart.push({ id: item.id, name: item.name, maxQty: item.availableQuantity, requestQty: 1 }); updateCartUI(); showAlert(`เพิ่ม "${item.name}" ลงตะกร้าแล้ว!`);
-         } else { showAlert(`ไอเทมนี้อยู่ในตะกร้าแล้ว`, 'warning'); }
-      } else { showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือของหมด`, 'error'); }
+
+      if (item) {
+         // 1. นำชื่ออุปกรณ์ที่สแกนเจอ ไปใส่ในช่องค้นหา
+         const searchInput = document.getElementById('search-input');
+         searchInput.value = item.name;
+
+         // 2. สั่งให้ระบบค้นหา (Filter) ทำงานทันทีเหมือนเราพิมพ์เอง
+         const event = new Event('input', { bubbles: true });
+         searchInput.dispatchEvent(event);
+
+         showAlert(`พบอุปกรณ์: "${item.name}"`);
+      } else {
+         showAlert(`ไม่พบข้อมูลอุปกรณ์รหัสนี้ในระบบ`, 'error');
+      }
     }
+    
     function onScanFailure() {}
   </script>
 </body>
