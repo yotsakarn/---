@@ -22,6 +22,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
   
   <style>
+    /* 1. ล็อคขนาดกล่องทุกชนิดไม่ให้บวมล้นหน้าจอ */
     * { 
       box-sizing: border-box; 
     }
@@ -40,6 +41,7 @@
     
     body, button, input, textarea, select { font-family: 'Prompt', sans-serif; margin: 0; font-size: 18px; }
     
+    /* 2. บล็อกการเลื่อนซ้าย-ขวาของตัวเว็บทั้งหมด */
     body { 
       background-color: var(--light-gray); 
       color: var(--text-color); 
@@ -59,6 +61,7 @@
     
     .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 15px; }
     
+    /* แก้ไขจุดที่ 1: เพิ่ม -webkit-overflow-scrolling: touch; เพื่อให้มือถือเลื่อนหน้าจอได้ลื่นไหลขึ้น */
     main.container { 
       flex-grow: 1; 
       overflow-y: auto; 
@@ -74,6 +77,7 @@
     .search-bar { position: sticky; top: 0; z-index: 990; background-color: var(--light-gray); padding: 10px 0; margin-bottom: 10px; display: flex; gap: 10px; border-bottom: 2px solid #e5e7eb; width: 100%; }
     .search-bar input[type="text"] { flex-grow: 1; min-width: 0; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; }
     
+    /* 3. ล็อคขนาด Grid ให้สมมาตรคงที่ */
     #items-grid { 
       display: grid; 
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
@@ -86,6 +90,7 @@
     .item-card img { width: 100%; height: 130px; object-fit: contain; background-color: #f9fafb; padding: 10px; }
     .item-card-content { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
     
+    /* 4. ล็อคตัวหนังสือยาวๆ ไม่ให้ดันกล่องเพี้ยน */
     .item-card h3 { 
       margin: 0 0 6px 0; 
       font-size: 1.1em; 
@@ -160,6 +165,7 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
     
+    /* Responsive */
     @media (max-width: 768px) {
       body, button, input, textarea, select { font-size: 16px; }
       header h1 { font-size: 1.3em; }
@@ -268,8 +274,8 @@
         </div>
       </div>
       <div id="charts-container" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; justify-content: space-around; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-          <div style="width: 100%; max-width: 350px; height: 300px;"><canvas id="statusPieChart"></canvas></div>
-          <div style="width: 100%; max-width: 450px; height: 300px;"><canvas id="topItemsBarChart"></canvas></div>
+          <div style="width: 100%; max-width: 350px;"><canvas id="statusPieChart"></canvas></div>
+          <div style="width: 100%; max-width: 450px;"><canvas id="topItemsBarChart"></canvas></div>
       </div>
     </div>
   </main>
@@ -347,21 +353,23 @@
       async getStats() { return await this.callAPI("getStats"); }
     };
 
+    // --- Global State Variables ---
     let cart = []; 
     let html5QrCode = null;
     let myPieChart = null;
     let myBarChart = null;
     
+    // In-memory Data Cache
     window.allItems = []; 
     window.allBorrowedItems = [];
     window.allStats = {};
 
+    // --- Core Logic : Fetch All & Render ---
     window.onload = async () => { 
         await fetchAllData();
         showView('items-view'); 
     };
 
-    // ปรับปรุง: ดึงข้อมูลและวาดตารางเก็บไว้ล่วงหน้าทันทีเพื่อลดภาระ CPU ตอนกดเปลี่ยนช่อง
     async function fetchAllData() {
       showLoader();
       try {
@@ -373,17 +381,6 @@
         window.allItems = items || [];
         window.allBorrowedItems = borrowed || [];
         window.allStats = stats || {};
-        
-        // วาด UI ทุกหน้าเก็บไว้ใน Cache ทันทีที่ข้อมูลมาถึง
-        displayItems();
-        renderReturnTable();
-        renderHistoryTable();
-        renderStatsTable();
-
-        // เคลียร์ช่องค้นหาเก่าออก ป้องกันหน้าบั๊ก
-        document.getElementById('search-input').value = '';
-        document.getElementById('return-search-input').value = '';
-        document.getElementById('history-search-input').value = '';
       } catch (error) {
         console.error("Error fetching data:", error);
         showAlert("ดึงข้อมูลไม่สำเร็จ กรุณารีเฟรชหน้าเว็บ", "error");
@@ -391,13 +388,23 @@
       hideLoader();
     }
 
+    function refreshActiveView() {
+      const activeView = document.querySelector('.view.active');
+      if (!activeView) return;
+      const viewId = activeView.id;
+
+      if (viewId === 'items-view') displayItems();
+      else if (viewId === 'return-view') renderReturnTable();
+      else if (viewId === 'history-view') renderHistoryTable();
+      else if (viewId === 'stats-view') displayStats();
+    }
+    
     const views = document.querySelectorAll('.view');
     const navButtons = document.querySelectorAll('.nav-btn');
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
       btn.addEventListener('click', (e) => { showView(e.target.dataset.view); });
     });
 
-    // ปรับปรุง: ฟังก์ชันสลับหน้าใช้วิธี Toggle CSS แทนการเรนเดอร์ใหม่ สลับหน้าได้ทันที 100% ไม่ค้าง
     function showView(viewId) {
       views.forEach(v => v.classList.remove('active'));
       document.getElementById(viewId).classList.add('active');
@@ -406,12 +413,10 @@
       const targetBtn = document.querySelector(`[data-view="${viewId}"]`);
       if(targetBtn) targetBtn.classList.add('active');
 
-      // หน่วงเวลาการวาดกราฟเล็กน้อยเฉพาะตอนเข้าหน้าสถิติ ป้องกันหน้าเว็บหน่วง
-      if (viewId === 'stats-view') {
-        setTimeout(renderCharts, 50);
-      }
+      refreshActiveView();
     }
 
+    // --- Helper Functions ---
     function showLoader() { document.getElementById('loader').style.display = 'flex'; }
     function hideLoader() { document.getElementById('loader').style.display = 'none'; }
     function showAlert(msg, icon='success') { Swal.fire({ title: icon==='success'?'สำเร็จ!':'แจ้งเตือน!', text: msg, icon: icon }); }
@@ -469,6 +474,7 @@
             ? `<input type="number" id="card-qty-${item.id}" value="1" disabled style="width:45px; text-align:center; background:#e9ecef;">`
             : `<input type="number" id="card-qty-${item.id}" value="${currentSelectedQty}" min="1" max="${item.availableQuantity}" style="width:45px; text-align:center;" ${item.availableQuantity <= 0 ? 'disabled' : ''} onchange="updateCardQtyIfInCart(${item.id}, ${item.availableQuantity})">`;
 
+        /* แก้ไขจุดที่ 2: เพิ่ม loading="lazy" ในแท็ก img เพื่อลดการกิน RAM ในการโหลดรูป */
         card.innerHTML = `<img src="${item.image}" loading="lazy"><div class="item-card-content"><h3>${item.name}</h3><p>${item.description}</p><div class="item-card-footer"><div>${statusHtml}</div><div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div style="display:flex; align-items:center; gap:4px;">${labelHtml}${qtyInputHtml}</div><button id="add-btn-${item.id}" class="btn ${inCart ? 'btn-secondary selected' : 'btn-primary'}" style="flex-grow: 1;" ${item.availableQuantity <= 0 ? 'disabled' : ''} onclick="toggleCart(${item.id}, '${item.name}', ${item.availableQuantity})">${inCart ? 'เอาออก' : 'ใส่ตะกร้า'}</button></div></div></div>`;
         grid.appendChild(card);
       });
@@ -527,7 +533,7 @@
           cart = []; 
           updateCartUI(); 
           await fetchAllData(); 
-          showView('items-view');
+          refreshActiveView(); 
       } else { showAlert(res.error, 'error'); }
     });
 
@@ -576,7 +582,7 @@
     function autoCalcGood(id, total) { const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); let v = parseInt(c.value) || 0; if (v > total) v = total; c.value = v; g.value = total - v; }
 
     // --- Stats & History View ---
-    function renderStatsTable() {
+    function displayStats() {
       const stats = window.allStats;
       if(!stats || stats.error || !stats.itemUsageStats) { return; }
       
@@ -592,32 +598,11 @@
              <td>${item.name}</td><td>${item.initialTotal}</td><td style="color:var(--danger);">${item.consumed}</td><td>${item.currentTotal}</td><td style="color:var(--warning);">${item.borrowed}</td><td style="color:var(--success);">${item.available}</td><td>${item.borrowTimes}</td><td>${item.returnTimes}</td>
          </tr>`; 
       });
-    }
 
-    // ปรับปรุง: แยกส่วนการวาดกราฟออกมาเรียกใช้เฉพาะตอนหน้าต่างสถิติเปิดขึ้นมาจริงๆ ป้องกันการกินแรมล่วงหน้า
-    function renderCharts() {
-      const stats = window.allStats;
-      if(!stats || stats.error || !stats.itemUsageStats) { return; }
-      
-      if(myPieChart) myPieChart.destroy(); 
-      if(myBarChart) myBarChart.destroy();
-      
-      const ctxPie = document.getElementById('statusPieChart');
-      const ctxBar = document.getElementById('topItemsBarChart');
-      if(!ctxPie || !ctxBar) return;
-
-      myPieChart = new Chart(ctxPie.getContext('2d'), { 
-        type: 'doughnut', 
-        data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems, stats.borrowedItems, stats.totalConsumed], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-      
+      if(myPieChart) myPieChart.destroy(); if(myBarChart) myBarChart.destroy();
+      myPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), { type: 'doughnut', data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems, stats.borrowedItems, stats.totalConsumed], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] } });
       const topItems = (stats.mostBorrowedItems || []).slice(0, 5);
-      myBarChart = new Chart(ctxBar.getContext('2d'), { 
-        type: 'bar', 
-        data: { labels: topItems.map(i => i.name), datasets: [{ label: 'จำนวนครั้งที่ถูกยืม', data: topItems.map(i => i.count), backgroundColor: '#3b82f6' }] },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
+      myBarChart = new Chart(document.getElementById('topItemsBarChart').getContext('2d'), { type: 'bar', data: { labels: topItems.map(i => i.name), datasets: [{ label: 'จำนวนครั้งที่ถูกยืม', data: topItems.map(i => i.count), backgroundColor: '#3b82f6' }] } });
     }
 
     function renderHistoryTable() {
@@ -657,7 +642,7 @@
           if(res.success){ 
              showAlert(res.message); 
              await fetchAllData(); 
-             showView('return-view');
+             refreshActiveView();
           } else { showAlert(res.error, 'error'); }
         } 
       }); 
@@ -706,6 +691,7 @@
               if(res.success) { 
                  showAlert('ลบสำเร็จ!'); 
                  await fetchAllData();
+                 refreshActiveView();
                  if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
               }
             }
@@ -725,6 +711,7 @@
            showAlert('บันทึกสำเร็จ!'); 
            hideModal('item-form-modal'); showModal('manage-items-modal'); 
            await fetchAllData();
+           refreshActiveView();
            if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
         }
     });
@@ -739,6 +726,7 @@
       .catch(() => { showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); hideModal('qr-modal'); });
     }
 
+    /* แก้ไขจุดที่ 3: เคลียร์ค่า RAM ของกล้องหลังจากกดปิดสแกนเนอร์ */
     function stopScanner() { 
       if (html5QrCode) { 
         html5QrCode.stop()
