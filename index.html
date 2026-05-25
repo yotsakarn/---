@@ -401,8 +401,10 @@
     
     const views = document.querySelectorAll('.view');
     const navButtons = document.querySelectorAll('.nav-btn');
+    
+    // แก้ไขจุดที่ 2: ดึงค่าจาก btn.dataset.view โดยตรงเพื่อความแม่นยำ ไม่ผ่านพึ่งพิง e.target
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
-      btn.addEventListener('click', (e) => { showView(e.target.dataset.view); });
+      btn.addEventListener('click', () => { showView(btn.dataset.view); });
     });
 
     function showView(viewId) {
@@ -474,7 +476,6 @@
             ? `<input type="number" id="card-qty-${item.id}" value="1" disabled style="width:45px; text-align:center; background:#e9ecef;">`
             : `<input type="number" id="card-qty-${item.id}" value="${currentSelectedQty}" min="1" max="${item.availableQuantity}" style="width:45px; text-align:center;" ${item.availableQuantity <= 0 ? 'disabled' : ''} onchange="updateCardQtyIfInCart(${item.id}, ${item.availableQuantity})">`;
 
-        /* แก้ไขจุดที่ 2: เพิ่ม loading="lazy" ในแท็ก img เพื่อลดการกิน RAM ในการโหลดรูป */
         card.innerHTML = `<img src="${item.image}" loading="lazy"><div class="item-card-content"><h3>${item.name}</h3><p>${item.description}</p><div class="item-card-footer"><div>${statusHtml}</div><div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div style="display:flex; align-items:center; gap:4px;">${labelHtml}${qtyInputHtml}</div><button id="add-btn-${item.id}" class="btn ${inCart ? 'btn-secondary selected' : 'btn-primary'}" style="flex-grow: 1;" ${item.availableQuantity <= 0 ? 'disabled' : ''} onclick="toggleCart(${item.id}, '${item.name}', ${item.availableQuantity})">${inCart ? 'เอาออก' : 'ใส่ตะกร้า'}</button></div></div></div>`;
         grid.appendChild(card);
       });
@@ -538,6 +539,7 @@
     });
 
     // --- Return View (คืนของ) ---
+    // แก้ไขจุดที่ 3: ปรับปรุงประสิทธิภาพของตารางคืนของให้สะสมตัวแปร แทนการเขียน DOM ซ้ำซ้อนในลูป
     function renderReturnTable() {
       const items = window.allBorrowedItems;
       const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
@@ -548,9 +550,10 @@
         return; 
       }
       
+      let html = '';
       items.forEach(item => {
         const qty = item.borrowQty || 1; 
-        tbody.innerHTML += `<tr>
+        html += `<tr>
           <td style="text-align: center;"><button type="button" class="btn btn-primary return-toggle-btn" data-id="${item.historyId}" data-selected="false" onclick="toggleReturnBtn(this)">กดเลือก</button></td>
           <td>${item.historyId}</td>
           <td>${item.itemName}</td>
@@ -561,6 +564,7 @@
           <td>${item.returnDate || '-'}</td>
         </tr>`;
       });
+      tbody.innerHTML = html;
       updateReturnCount();
     }
 
@@ -578,8 +582,23 @@
         updateReturnCount();
     }
 
-    function autoCalcConsumed(id, total) { const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); let v = parseInt(g.value) || 0; if (v > total) v = total; g.value = v; c.value = total - v; }
-    function autoCalcGood(id, total) { const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); let v = parseInt(c.value) || 0; if (v > total) v = total; c.value = v; g.value = total - v; }
+    // แก้ไขจุดที่ 4: เติมเครื่องมือป้องกันผู้ใช้ระบุค่าติดลบในช่องจำนวน
+    function autoCalcConsumed(id, total) { 
+      const g = document.getElementById(`ret-good-${id}`); 
+      const c = document.getElementById(`ret-consumed-${id}`); 
+      let v = parseInt(g.value) || 0; 
+      v = Math.max(0, Math.min(v, total));
+      g.value = v; 
+      c.value = total - v; 
+    }
+    function autoCalcGood(id, total) { 
+      const g = document.getElementById(`ret-good-${id}`); 
+      const c = document.getElementById(`ret-consumed-${id}`); 
+      let v = parseInt(c.value) || 0; 
+      v = Math.max(0, Math.min(v, total));
+      c.value = v; 
+      g.value = total - v; 
+    }
 
     // --- Stats & History View ---
     function displayStats() {
@@ -689,10 +708,10 @@
             if (r.isConfirmed) { 
               showLoader(); const res = await AppDB.deleteItem(id); hideLoader(); 
               if(res.success) { 
-                 showAlert('ลบสำเร็จ!'); 
-                 await fetchAllData();
-                 refreshActiveView();
-                 if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
+                  showAlert('ลบสำเร็จ!'); 
+                  await fetchAllData();
+                  refreshActiveView();
+                  if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
               }
             }
         });
@@ -726,7 +745,6 @@
       .catch(() => { showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); hideModal('qr-modal'); });
     }
 
-    /* แก้ไขจุดที่ 3: เคลียร์ค่า RAM ของกล้องหลังจากกดปิดสแกนเนอร์ */
     function stopScanner() { 
       if (html5QrCode) { 
         html5QrCode.stop()
