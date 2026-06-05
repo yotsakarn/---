@@ -61,7 +61,7 @@
     
     .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 15px; }
     
-    /* แก้ไขจุดที่ 1: เพิ่ม -webkit-overflow-scrolling: touch; เพื่อให้มือถือเลื่อนหน้าจอได้ลื่นไหลขึ้น */
+    /* เพิ่ม -webkit-overflow-scrolling: touch; เพื่อให้มือถือเลื่อนหน้าจอได้ลื่นไหลขึ้น */
     main.container { 
       flex-grow: 1; 
       overflow-y: auto; 
@@ -690,9 +690,40 @@
       }); 
     });
 
+    // --- อัปเดตฟังก์ชัน Export PDF ---
     function exportStatsToPDF() {
-      showLoader(); const el = document.getElementById('usage-stats-container');
-      html2pdf().set({ margin:10, filename:'สถิติอุปกรณ์.pdf', html2canvas:{scale:2}, jsPDF:{format:'a4', orientation:'landscape'} }).from(el).save().then(() => { hideLoader(); showAlert('ดาวน์โหลดสำเร็จ!'); });
+      showLoader(); 
+      
+      const container = document.getElementById('usage-stats-container');
+      const tableDiv = container.querySelector('.table-container');
+      const downloadBtn = container.querySelector('button');
+
+      // 1. เก็บค่าสไตล์เดิมไว้ก่อน
+      const originalMaxHeight = tableDiv.style.maxHeight;
+      const originalOverflow = tableDiv.style.overflow || '';
+      const originalDisplay = downloadBtn ? downloadBtn.style.display : '';
+
+      // 2. ปลดล็อคความสูงตารางให้กางเต็มที่ และซ่อนปุ่มดาวน์โหลด
+      tableDiv.style.maxHeight = 'none';
+      tableDiv.style.overflow = 'visible';
+      if(downloadBtn) downloadBtn.style.display = 'none';
+
+      // 3. สร้าง PDF จากตารางที่กางเต็มแล้ว
+      html2pdf().set({ 
+        margin: 10, 
+        filename: 'สถิติอุปกรณ์.pdf', 
+        html2canvas: { scale: 2 }, 
+        jsPDF: { format: 'a4', orientation: 'landscape' } 
+      }).from(container).save().then(() => { 
+        
+        // 4. เมื่อโหลดเสร็จ ให้คืนค่าตารางและปุ่มกลับเป็นเหมือนเดิม
+        tableDiv.style.maxHeight = originalMaxHeight;
+        tableDiv.style.overflow = originalOverflow;
+        if(downloadBtn) downloadBtn.style.display = originalDisplay;
+        
+        hideLoader(); 
+        showAlert('ดาวน์โหลดสำเร็จ!'); 
+      });
     }
 
     // --- Admin Manage Items ---
