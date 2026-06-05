@@ -402,12 +402,13 @@
     const views = document.querySelectorAll('.view');
     const navButtons = document.querySelectorAll('.nav-btn');
     
-    // แก้ไขจุดที่ 2: ดึงค่าจาก btn.dataset.view โดยตรงเพื่อความแม่นยำ ไม่ผ่านพึ่งพิง e.target
+    // ดึงค่าจาก btn.dataset.view โดยตรงเพื่อความแม่นยำ
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
       btn.addEventListener('click', () => { showView(btn.dataset.view); });
     });
 
     function showView(viewId) {
+      // เปลี่ยนคลาสเพื่อแสดงหน้าต่างใหม่ทันที (ผู้ใช้จะรู้สึกว่าแอปตอบสนองไว)
       views.forEach(v => v.classList.remove('active'));
       document.getElementById(viewId).classList.add('active');
       navButtons.forEach(btn => btn.classList.remove('active'));
@@ -415,7 +416,10 @@
       const targetBtn = document.querySelector(`[data-view="${viewId}"]`);
       if(targetBtn) targetBtn.classList.add('active');
 
-      refreshActiveView();
+      // หน่วงเวลา 50 มิลลิวินาที คืนพื้นที่ให้เบราว์เซอร์วาดหน้าจอเสร็จก่อน แล้วค่อยรันข้อมูลหนักๆ
+      setTimeout(() => {
+        refreshActiveView();
+      }, 50);
     }
 
     // --- Helper Functions ---
@@ -461,13 +465,18 @@
     // --- Items View (ยืมของ) ---
     function displayItems() {
       const items = window.allItems;
-      const grid = document.getElementById('items-grid'); grid.innerHTML = '';
-      if (!items || items.length === 0 || items.error) { grid.innerHTML = '<p>ไม่พบอุปกรณ์ หรือการเชื่อมต่อล้มเหลว</p>'; return; }
+      const grid = document.getElementById('items-grid'); 
+      
+      if (!items || items.length === 0 || items.error) { 
+        grid.innerHTML = '<p>ไม่พบอุปกรณ์ หรือการเชื่อมต่อล้มเหลว</p>'; 
+        return; 
+      }
+      
+      let htmlString = ''; // ใช้ตัวแปรสะสม HTML เพื่อป้องกันอาการกระตุก
       
       items.forEach(item => {
         const inCart = cart.find(c => c.id == item.id);
         const currentSelectedQty = inCart ? inCart.requestQty : 1; 
-        const card = document.createElement('div'); card.className = 'item-card';
         let statusHtml = item.availableQuantity > 0 ? `<span class="status-badge status-available">คงเหลือ ${item.availableQuantity}</span>` : `<span class="status-badge status-borrowed">หมดชั่วคราว</span>`;
         
         const isSingle = item.totalQuantity === 1;
@@ -476,9 +485,24 @@
             ? `<input type="number" id="card-qty-${item.id}" value="1" disabled style="width:45px; text-align:center; background:#e9ecef;">`
             : `<input type="number" id="card-qty-${item.id}" value="${currentSelectedQty}" min="1" max="${item.availableQuantity}" style="width:45px; text-align:center;" ${item.availableQuantity <= 0 ? 'disabled' : ''} onchange="updateCardQtyIfInCart(${item.id}, ${item.availableQuantity})">`;
 
-        card.innerHTML = `<img src="${item.image}" loading="lazy"><div class="item-card-content"><h3>${item.name}</h3><p>${item.description}</p><div class="item-card-footer"><div>${statusHtml}</div><div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div style="display:flex; align-items:center; gap:4px;">${labelHtml}${qtyInputHtml}</div><button id="add-btn-${item.id}" class="btn ${inCart ? 'btn-secondary selected' : 'btn-primary'}" style="flex-grow: 1;" ${item.availableQuantity <= 0 ? 'disabled' : ''} onclick="toggleCart(${item.id}, '${item.name}', ${item.availableQuantity})">${inCart ? 'เอาออก' : 'ใส่ตะกร้า'}</button></div></div></div>`;
-        grid.appendChild(card);
+        htmlString += `
+          <div class="item-card">
+            <img src="${item.image}" loading="lazy">
+            <div class="item-card-content">
+              <h3>${item.name}</h3>
+              <p>${item.description}</p>
+              <div class="item-card-footer">
+                <div>${statusHtml}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:4px;">${labelHtml}${qtyInputHtml}</div>
+                  <button id="add-btn-${item.id}" class="btn ${inCart ? 'btn-secondary selected' : 'btn-primary'}" style="flex-grow: 1;" ${item.availableQuantity <= 0 ? 'disabled' : ''} onclick="toggleCart(${item.id}, '${item.name}', ${item.availableQuantity})">${inCart ? 'เอาออก' : 'ใส่ตะกร้า'}</button>
+                </div>
+              </div>
+            </div>
+          </div>`;
       });
+      
+      grid.innerHTML = htmlString;
     }
 
     document.getElementById('cart-toggle-btn').addEventListener('click', () => { document.getElementById('cart-container').classList.add('open'); });
@@ -539,7 +563,6 @@
     });
 
     // --- Return View (คืนของ) ---
-    // แก้ไขจุดที่ 3: ปรับปรุงประสิทธิภาพของตารางคืนของให้สะสมตัวแปร แทนการเขียน DOM ซ้ำซ้อนในลูป
     function renderReturnTable() {
       const items = window.allBorrowedItems;
       const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
@@ -582,7 +605,6 @@
         updateReturnCount();
     }
 
-    // แก้ไขจุดที่ 4: เติมเครื่องมือป้องกันผู้ใช้ระบุค่าติดลบในช่องจำนวน
     function autoCalcConsumed(id, total) { 
       const g = document.getElementById(`ret-good-${id}`); 
       const c = document.getElementById(`ret-consumed-${id}`); 
@@ -591,6 +613,7 @@
       g.value = v; 
       c.value = total - v; 
     }
+    
     function autoCalcGood(id, total) { 
       const g = document.getElementById(`ret-good-${id}`); 
       const c = document.getElementById(`ret-consumed-${id}`); 
