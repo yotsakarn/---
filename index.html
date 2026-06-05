@@ -702,27 +702,37 @@
       const originalMaxHeight = tableDiv.style.maxHeight;
       const originalOverflow = tableDiv.style.overflow || '';
       const originalDisplay = downloadBtn ? downloadBtn.style.display : '';
+      const originalWidth = container.style.width;
 
-      // 2. ปลดล็อคความสูงตารางให้กางเต็มที่ และซ่อนปุ่มดาวน์โหลด
+      // 2. ปลดล็อคความสูงและตั้งค่าความกว้างจำลองเพื่อไม่ให้ตัวหนังสือขาด
       tableDiv.style.maxHeight = 'none';
       tableDiv.style.overflow = 'visible';
+      
+      // บังคับความกว้างของคอนเทนเนอร์ให้กางออก (1200px เป็นขนาดที่พอดีกับ A4 แนวนอน)
+      container.style.width = '1200px';
+
       if(downloadBtn) downloadBtn.style.display = 'none';
 
-      // 3. สร้าง PDF จากตารางที่กางเต็มแล้ว
+      // 3. สร้าง PDF พร้อมกำหนดขอบกระดาษและจำลองหน้าจอ
       html2pdf().set({ 
-        margin: 10, 
+        margin: [10, 10, 10, 10], // ตั้งค่าขอบกระดาษ [บน, ขวา, ล่าง, ซ้าย]
         filename: 'สถิติอุปกรณ์.pdf', 
-        html2canvas: { scale: 2 }, 
-        jsPDF: { format: 'a4', orientation: 'landscape' } 
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { 
+          scale: 2, 
+          windowWidth: 1200 // สั่งให้แคปเจอร์ภาพที่ความกว้าง 1200px เสมอ (แก้ปัญหาหน้าจอแคบ)
+        }, 
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
       }).from(container).save().then(() => { 
         
-        // 4. เมื่อโหลดเสร็จ ให้คืนค่าตารางและปุ่มกลับเป็นเหมือนเดิม
+        // 4. เมื่อโหลดเสร็จ ให้คืนค่าตารางและหน้าจอกลับเป็นเหมือนเดิม
         tableDiv.style.maxHeight = originalMaxHeight;
         tableDiv.style.overflow = originalOverflow;
+        container.style.width = originalWidth; // คืนความกว้างหน้าจอให้เป็นปกติ
         if(downloadBtn) downloadBtn.style.display = originalDisplay;
         
         hideLoader(); 
-        showAlert('ดาวน์โหลดสำเร็จ!'); 
+        showAlert('ดาวน์โหลดและจัดหน้ากระดาษสำเร็จ!'); 
       });
     }
 
