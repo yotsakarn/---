@@ -364,6 +364,9 @@
     window.allBorrowedItems = [];
     window.allStats = {};
 
+    // 💡 ตัวแปรเก็บสถานะว่าหน้าไหนถูกวาดไปแล้วบ้าง (หัวใจหลักของความลื่นไหล)
+    let renderedViews = new Set(); 
+
     // --- Core Logic : Fetch All & Render ---
     window.onload = async () => { 
         await fetchAllData();
@@ -381,6 +384,17 @@
         window.allItems = items || [];
         window.allBorrowedItems = borrowed || [];
         window.allStats = stats || {};
+
+        // ล้างความจำการวาดหน้าจอ เพื่อให้มันวาดข้อมูลชุดใหม่เมื่อกดเข้าเมนู
+        renderedViews.clear();
+
+        // สั่งวาดเฉพาะหน้าจอที่กำลังเปิดอยู่ปัจจุบันทันที
+        const activeView = document.querySelector('.view.active');
+        if (activeView) {
+            renderViewContent(activeView.id);
+            renderedViews.add(activeView.id);
+        }
+
       } catch (error) {
         console.error("Error fetching data:", error);
         showAlert("ดึงข้อมูลไม่สำเร็จ กรุณารีเฟรชหน้าเว็บ", "error");
@@ -388,27 +402,15 @@
       hideLoader();
     }
 
-    function refreshActiveView() {
-      const activeView = document.querySelector('.view.active');
-      if (!activeView) return;
-      const viewId = activeView.id;
-
-      if (viewId === 'items-view') displayItems();
-      else if (viewId === 'return-view') renderReturnTable();
-      else if (viewId === 'history-view') renderHistoryTable();
-      else if (viewId === 'stats-view') displayStats();
-    }
-    
     const views = document.querySelectorAll('.view');
     const navButtons = document.querySelectorAll('.nav-btn');
     
-    // ดึงค่าจาก btn.dataset.view โดยตรงเพื่อความแม่นยำ
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
       btn.addEventListener('click', () => { showView(btn.dataset.view); });
     });
 
     function showView(viewId) {
-      // เปลี่ยนคลาสเพื่อแสดงหน้าต่างใหม่ทันที (ผู้ใช้จะรู้สึกว่าแอปตอบสนองไว)
+      // 1. สลับ Class CSS เพื่อแสดง/ซ่อน หน้าต่างทันที ทำให้กดปุ๊บมาปั๊บ
       views.forEach(v => v.classList.remove('active'));
       document.getElementById(viewId).classList.add('active');
       navButtons.forEach(btn => btn.classList.remove('active'));
@@ -416,10 +418,21 @@
       const targetBtn = document.querySelector(`[data-view="${viewId}"]`);
       if(targetBtn) targetBtn.classList.add('active');
 
-      // หน่วงเวลา 50 มิลลิวินาที คืนพื้นที่ให้เบราว์เซอร์วาดหน้าจอเสร็จก่อน แล้วค่อยรันข้อมูลหนักๆ
-      setTimeout(() => {
-        refreshActiveView();
-      }, 50);
+      // 2. ถ้าหน้านี้ยังไม่เคยวาด ให้รันการวาดข้อมูล (หน่วง 15ms เพื่อไม่ให้ขัดจังหวะการเปลี่ยน CSS)
+      if (!renderedViews.has(viewId)) {
+        setTimeout(() => {
+          renderViewContent(viewId);
+          renderedViews.add(viewId);
+        }, 15);
+      }
+    }
+
+    // ฟังก์ชันเลือกว่าจะวาดข้อมูลชุดไหนลงไปในหน้าจอ
+    function renderViewContent(viewId) {
+      if (viewId === 'items-view') displayItems();
+      else if (viewId === 'return-view') renderReturnTable();
+      else if (viewId === 'history-view') renderHistoryTable();
+      else if (viewId === 'stats-view') displayStats();
     }
 
     // --- Helper Functions ---
@@ -472,7 +485,7 @@
         return; 
       }
       
-      let htmlString = ''; // ใช้ตัวแปรสะสม HTML เพื่อป้องกันอาการกระตุก
+      let htmlString = ''; 
       
       items.forEach(item => {
         const inCart = cart.find(c => c.id == item.id);
@@ -558,7 +571,6 @@
           cart = []; 
           updateCartUI(); 
           await fetchAllData(); 
-          refreshActiveView(); 
       } else { showAlert(res.error, 'error'); }
     });
 
@@ -684,13 +696,11 @@
           if(res.success){ 
              showAlert(res.message); 
              await fetchAllData(); 
-             refreshActiveView();
           } else { showAlert(res.error, 'error'); }
         } 
       }); 
     });
 
-    // --- อัปเดตฟังก์ชัน Export PDF ---
     function exportStatsToPDF() {
       showLoader(); 
       
@@ -698,39 +708,31 @@
       const tableDiv = container.querySelector('.table-container');
       const downloadBtn = container.querySelector('button');
 
-      // 1. เก็บค่าสไตล์เดิมไว้ก่อน
       const originalMaxHeight = tableDiv.style.maxHeight;
       const originalOverflow = tableDiv.style.overflow || '';
       const originalDisplay = downloadBtn ? downloadBtn.style.display : '';
       const originalWidth = container.style.width;
 
-      // 2. ปลดล็อคความสูงและตั้งค่าความกว้างจำลองเพื่อไม่ให้ตัวหนังสือขาด
       tableDiv.style.maxHeight = 'none';
       tableDiv.style.overflow = 'visible';
-      
-      // บังคับความกว้างของคอนเทนเนอร์ให้กางออก (1200px เป็นขนาดที่พอดีกับ A4 แนวนอน)
       container.style.width = '1200px';
 
       if(downloadBtn) downloadBtn.style.display = 'none';
 
-      // 3. สร้าง PDF พร้อมกำหนดขอบกระดาษและจำลองหน้าจอ
       html2pdf().set({ 
-        margin: [10, 10, 10, 10], // ตั้งค่าขอบกระดาษ [บน, ขวา, ล่าง, ซ้าย]
+        margin: [10, 10, 10, 10],
         filename: 'สถิติอุปกรณ์.pdf', 
         image: { type: 'jpeg', quality: 1 },
         html2canvas: { 
           scale: 2, 
-          windowWidth: 1200 // สั่งให้แคปเจอร์ภาพที่ความกว้าง 1200px เสมอ (แก้ปัญหาหน้าจอแคบ)
+          windowWidth: 1200
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
       }).from(container).save().then(() => { 
-        
-        // 4. เมื่อโหลดเสร็จ ให้คืนค่าตารางและหน้าจอกลับเป็นเหมือนเดิม
         tableDiv.style.maxHeight = originalMaxHeight;
         tableDiv.style.overflow = originalOverflow;
-        container.style.width = originalWidth; // คืนความกว้างหน้าจอให้เป็นปกติ
+        container.style.width = originalWidth; 
         if(downloadBtn) downloadBtn.style.display = originalDisplay;
-        
         hideLoader(); 
         showAlert('ดาวน์โหลดและจัดหน้ากระดาษสำเร็จ!'); 
       });
@@ -774,7 +776,6 @@
               if(res.success) { 
                   showAlert('ลบสำเร็จ!'); 
                   await fetchAllData();
-                  refreshActiveView();
                   if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
               }
             }
@@ -794,7 +795,6 @@
            showAlert('บันทึกสำเร็จ!'); 
            hideModal('item-form-modal'); showModal('manage-items-modal'); 
            await fetchAllData();
-           refreshActiveView();
            if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
         }
     });
