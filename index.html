@@ -679,7 +679,7 @@
 
     document.getElementById('return-selected-btn').addEventListener('click', () => {
       const selectedBtns = document.querySelectorAll('.return-toggle-btn[data-selected="true"]'); if(selectedBtns.length === 0) return;
-      Swal.fire({ title: 'ระบุชื่อผู้คืน', input: 'text', showCancelButton: true, confirmButtonText: 'ยืนยันคืน', inputValidator: (v) => { if (!v) return 'กรุณาระบุชื่อ!' } }).then(async (result) => {
+      Swal.fire({ title: 'ระบุชื่อ-นามสกุลผู้คืน', input: 'text', showCancelButton: true, confirmButtonText: 'ยืนยันคืน', inputValidator: (v) => { if (!v) return 'กรุณาระบุชื่อ!' } }).then(async (result) => {
         if (result.isConfirmed) {
           const returnPayload = { returnerName: result.value, items: [] };
           selectedBtns.forEach(btn => { 
