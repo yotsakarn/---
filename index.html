@@ -574,7 +574,7 @@
       } else { showAlert(res.error, 'error'); }
     });
 
-    // --- Return View (คืนของ) ---
+    // --- Return View (คืนของ) --- [เวอร์ชันอัปเดตล็อคตัวเลขสำหรับของชิ้นเดียว]
     function renderReturnTable() {
       const items = window.allBorrowedItems;
       const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
@@ -588,8 +588,19 @@
       let html = '';
       items.forEach(item => {
         const qty = item.borrowQty || 1; 
+        
+        // เช็คหาอุปกรณ์นี้ในระบบ (window.allItems) ว่ามีจำนวนสต็อกทั้งหมด (Total Quantity) แค่ 1 ชิ้นหรือไม่
+        const originalItem = window.allItems.find(i => i.name === item.itemName);
+        const isSingle = originalItem ? (originalItem.totalQuantity === 1) : (qty === 1);
+
         html += `<tr>
-          <td style="text-align: center;"><button type="button" class="btn btn-primary return-toggle-btn" data-id="${item.historyId}" data-selected="false" onclick="toggleReturnBtn(this)">กดเลือก</button></td>
+          <td style="text-align: center;">
+             <button type="button" class="btn btn-primary return-toggle-btn" 
+                     data-id="${item.historyId}" 
+                     data-selected="false" 
+                     data-single="${isSingle}" 
+                     onclick="toggleReturnBtn(this)">กดเลือก</button>
+          </td>
           <td>${item.historyId}</td>
           <td>${item.itemName}</td>
           <td>${item.borrowerName}</td>
@@ -604,15 +615,42 @@
     }
 
     function toggleReturnBtn(btn) {
-        const id = btn.dataset.id; const isSelected = btn.dataset.selected === 'true';
-        const goodInput = document.getElementById(`ret-good-${id}`); const consumedInput = document.getElementById(`ret-consumed-${id}`);
+        const id = btn.dataset.id; 
+        const isSelected = btn.dataset.selected === 'true';
+        const isSingle = btn.dataset.single === 'true'; // ดึงค่าว่าเป็นของที่มีในระบบชิ้นเดียวหรือไม่
+        
+        const goodInput = document.getElementById(`ret-good-${id}`); 
+        const consumedInput = document.getElementById(`ret-consumed-${id}`);
+        
         if (isSelected) {
-            btn.dataset.selected = 'false'; btn.className = 'btn btn-primary return-toggle-btn'; btn.textContent = 'กดเลือก';
-            goodInput.readOnly = true; consumedInput.readOnly = true; goodInput.classList.remove('highlight-input'); consumedInput.classList.remove('highlight-input');
+            // กรณีกดยกเลิกการเลือก
+            btn.dataset.selected = 'false'; 
+            btn.className = 'btn btn-primary return-toggle-btn'; 
+            btn.textContent = 'กดเลือก';
+            goodInput.readOnly = true; 
+            consumedInput.readOnly = true; 
+            goodInput.classList.remove('highlight-input'); 
+            consumedInput.classList.remove('highlight-input');
         } else {
-            btn.dataset.selected = 'true'; btn.className = 'btn btn-secondary return-toggle-btn selected'; btn.textContent = 'เลือกแล้ว';
-            goodInput.readOnly = false; consumedInput.readOnly = false;
-            goodInput.classList.add('highlight-input'); consumedInput.classList.add('highlight-input');
+            // กรณีกดเลือกคืน
+            btn.dataset.selected = 'true'; 
+            btn.className = 'btn btn-secondary return-toggle-btn selected'; 
+            btn.textContent = 'เลือกแล้ว';
+            
+            // เช็คเงื่อนไข: ถ้าเป็นของที่มีมากกว่า 1 ชิ้นในระบบ ให้เปิดแก้ไขตัวเลขได้
+            if (!isSingle) {
+                goodInput.readOnly = false; 
+                consumedInput.readOnly = false;
+            } else {
+                // แต่ถ้าเป็นของที่มีชิ้นเดียว (ไม่สิ้นเปลือง) จะล็อคตัวเลขไว้ที่ คืน=1, ใช้ไป=0 เสมอ
+                goodInput.value = 1;
+                consumedInput.value = 0;
+            }
+            
+            // ไฮไลท์สีช่องให้รู้ว่าถูกกดเลือกทำรายการแล้ว 
+            // (ถ้าเป็นของ isSingle ช่องจะยังถูกล็อค Read-only อยู่แม้จะไฮไลท์สี)
+            goodInput.classList.add('highlight-input'); 
+            consumedInput.classList.add('highlight-input');
         }
         updateReturnCount();
     }
