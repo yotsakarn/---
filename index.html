@@ -746,16 +746,25 @@
       const tableDiv = container.querySelector('.table-container');
       const downloadBtn = container.querySelector('button');
 
+      // 1. เก็บค่า Style เดิมไว้ก่อน
       const originalMaxHeight = tableDiv.style.maxHeight;
       const originalOverflow = tableDiv.style.overflow || '';
       const originalDisplay = downloadBtn ? downloadBtn.style.display : '';
-      const originalWidth = container.style.width;
 
+      // 2. ปลดล็อคความสูงและ Scroll ชั่วคราว ให้ตารางแสดงเต็ม 100%
       tableDiv.style.maxHeight = 'none';
       tableDiv.style.overflow = 'visible';
-      container.style.width = '1200px';
-
+      
+      // ซ่อนปุ่มดาวน์โหลด (จะได้ไม่ไปโผล่ใน PDF)
       if(downloadBtn) downloadBtn.style.display = 'none';
+
+      // 3. ยกเลิก sticky ที่หัวตารางชั่วคราว (สำคัญมาก! ป้องกันคอลัมน์ซ้ายแหว่ง/เบี้ยว)
+      const thElements = container.querySelectorAll('thead th');
+      const originalThPositions = [];
+      thElements.forEach(th => {
+        originalThPositions.push(th.style.position || '');
+        th.style.position = 'static';
+      });
 
       html2pdf().set({ 
         margin: [10, 10, 10, 10],
@@ -763,14 +772,21 @@
         image: { type: 'jpeg', quality: 1 },
         html2canvas: { 
           scale: 2, 
-          windowWidth: 1200
+          scrollX: 0, // บังคับให้เริ่มแคปจากมุมแกน X เป็น 0 เสมอ
+          scrollY: 0,
+          windowWidth: container.scrollWidth // ให้ความกว้างครอบคลุมข้อมูลทั้งหมดไม่ให้โดนตัด
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
       }).from(container).save().then(() => { 
+        // 4. คืนค่า Style กลับเป็นเหมือนเดิมหลังจากเซฟเสร็จ
         tableDiv.style.maxHeight = originalMaxHeight;
         tableDiv.style.overflow = originalOverflow;
-        container.style.width = originalWidth; 
         if(downloadBtn) downloadBtn.style.display = originalDisplay;
+        
+        thElements.forEach((th, index) => {
+          th.style.position = originalThPositions[index];
+        });
+
         hideLoader(); 
         showAlert('ดาวน์โหลดและจัดหน้ากระดาษสำเร็จ!'); 
       });
