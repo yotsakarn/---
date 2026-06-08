@@ -364,7 +364,7 @@
     window.allBorrowedItems = [];
     window.allStats = {};
 
-    // 💡 ตัวแปรเก็บสถานะว่าหน้าไหนถูกวาดไปแล้วบ้าง (หัวใจหลักของความลื่นไหล)
+    // ตัวแปรเก็บสถานะว่าหน้าไหนถูกวาดไปแล้วบ้าง
     let renderedViews = new Set(); 
 
     // --- Core Logic : Fetch All & Render ---
@@ -385,10 +385,8 @@
         window.allBorrowedItems = borrowed || [];
         window.allStats = stats || {};
 
-        // ล้างความจำการวาดหน้าจอ เพื่อให้มันวาดข้อมูลชุดใหม่เมื่อกดเข้าเมนู
         renderedViews.clear();
 
-        // สั่งวาดเฉพาะหน้าจอที่กำลังเปิดอยู่ปัจจุบันทันที
         const activeView = document.querySelector('.view.active');
         if (activeView) {
             renderViewContent(activeView.id);
@@ -410,7 +408,6 @@
     });
 
     function showView(viewId) {
-      // 1. สลับ Class CSS เพื่อแสดง/ซ่อน หน้าต่างทันที ทำให้กดปุ๊บมาปั๊บ
       views.forEach(v => v.classList.remove('active'));
       document.getElementById(viewId).classList.add('active');
       navButtons.forEach(btn => btn.classList.remove('active'));
@@ -418,7 +415,6 @@
       const targetBtn = document.querySelector(`[data-view="${viewId}"]`);
       if(targetBtn) targetBtn.classList.add('active');
 
-      // 2. ถ้าหน้านี้ยังไม่เคยวาด ให้รันการวาดข้อมูล (หน่วง 15ms เพื่อไม่ให้ขัดจังหวะการเปลี่ยน CSS)
       if (!renderedViews.has(viewId)) {
         setTimeout(() => {
           renderViewContent(viewId);
@@ -427,7 +423,6 @@
       }
     }
 
-    // ฟังก์ชันเลือกว่าจะวาดข้อมูลชุดไหนลงไปในหน้าจอ
     function renderViewContent(viewId) {
       if (viewId === 'items-view') displayItems();
       else if (viewId === 'return-view') renderReturnTable();
@@ -574,7 +569,7 @@
       } else { showAlert(res.error, 'error'); }
     });
 
-    // --- Return View (คืนของ) --- [เวอร์ชันอัปเดตล็อคตัวเลขสำหรับของชิ้นเดียว]
+    // --- Return View (คืนของ) ---
     function renderReturnTable() {
       const items = window.allBorrowedItems;
       const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
@@ -589,7 +584,6 @@
       items.forEach(item => {
         const qty = item.borrowQty || 1; 
         
-        // เช็คหาอุปกรณ์นี้ในระบบ (window.allItems) ว่ามีจำนวนสต็อกทั้งหมด (Total Quantity) แค่ 1 ชิ้นหรือไม่
         const originalItem = window.allItems.find(i => i.name === item.itemName);
         const isSingle = originalItem ? (originalItem.totalQuantity === 1) : (qty === 1);
 
@@ -617,13 +611,12 @@
     function toggleReturnBtn(btn) {
         const id = btn.dataset.id; 
         const isSelected = btn.dataset.selected === 'true';
-        const isSingle = btn.dataset.single === 'true'; // ดึงค่าว่าเป็นของที่มีในระบบชิ้นเดียวหรือไม่
+        const isSingle = btn.dataset.single === 'true';
         
         const goodInput = document.getElementById(`ret-good-${id}`); 
         const consumedInput = document.getElementById(`ret-consumed-${id}`);
         
         if (isSelected) {
-            // กรณีกดยกเลิกการเลือก
             btn.dataset.selected = 'false'; 
             btn.className = 'btn btn-primary return-toggle-btn'; 
             btn.textContent = 'กดเลือก';
@@ -632,23 +625,18 @@
             goodInput.classList.remove('highlight-input'); 
             consumedInput.classList.remove('highlight-input');
         } else {
-            // กรณีกดเลือกคืน
             btn.dataset.selected = 'true'; 
             btn.className = 'btn btn-secondary return-toggle-btn selected'; 
             btn.textContent = 'เลือกแล้ว';
             
-            // เช็คเงื่อนไข: ถ้าเป็นของที่มีมากกว่า 1 ชิ้นในระบบ ให้เปิดแก้ไขตัวเลขได้
             if (!isSingle) {
                 goodInput.readOnly = false; 
                 consumedInput.readOnly = false;
             } else {
-                // แต่ถ้าเป็นของที่มีชิ้นเดียว (ไม่สิ้นเปลือง) จะล็อคตัวเลขไว้ที่ คืน=1, ใช้ไป=0 เสมอ
                 goodInput.value = 1;
                 consumedInput.value = 0;
             }
             
-            // ไฮไลท์สีช่องให้รู้ว่าถูกกดเลือกทำรายการแล้ว 
-            // (ถ้าเป็นของ isSingle ช่องจะยังถูกล็อค Read-only อยู่แม้จะไฮไลท์สี)
             goodInput.classList.add('highlight-input'); 
             consumedInput.classList.add('highlight-input');
         }
@@ -739,56 +727,78 @@
       }); 
     });
 
+    // --- ฟังก์ชันดาวน์โหลด PDF เวอร์ชันแก้ปัญหาขอบแหว่งสมบูรณ์แบบ ---
     function exportStatsToPDF() {
       showLoader(); 
       
-      const container = document.getElementById('usage-stats-container');
-      const tableDiv = container.querySelector('.table-container');
-      const downloadBtn = container.querySelector('button');
-
-      // 1. เก็บค่า Style เดิมไว้ก่อน
-      const originalMaxHeight = tableDiv.style.maxHeight;
-      const originalOverflow = tableDiv.style.overflow || '';
-      const originalDisplay = downloadBtn ? downloadBtn.style.display : '';
-
-      // 2. ปลดล็อคความสูงและ Scroll ชั่วคราว ให้ตารางแสดงเต็ม 100%
-      tableDiv.style.maxHeight = 'none';
-      tableDiv.style.overflow = 'visible';
+      const originalContainer = document.getElementById('usage-stats-container');
       
-      // ซ่อนปุ่มดาวน์โหลด (จะได้ไม่ไปโผล่ใน PDF)
-      if(downloadBtn) downloadBtn.style.display = 'none';
-
-      // 3. ยกเลิก sticky ที่หัวตารางชั่วคราว (สำคัญมาก! ป้องกันคอลัมน์ซ้ายแหว่ง/เบี้ยว)
-      const thElements = container.querySelectorAll('thead th');
-      const originalThPositions = [];
+      // 1. คัดลอก Node ของตารางแยกออกมาอิสระ เพื่อไม่ให้กระทบหน้าเว็บหลัก
+      const clonedContainer = originalContainer.cloneNode(true);
+      
+      // 2. ลบปุ่มดาวน์โหลดออกไปจากชิ้นที่โคลน (จะได้ไม่โผล่ไปใน PDF)
+      const downloadBtn = clonedContainer.querySelector('button');
+      if (downloadBtn) downloadBtn.remove();
+      
+      // 3. กำหนด Style ให้กล่องที่โคลนออกมาเป็นอิสระ ปลดล็อก CSS ของ Parent ทั้งหมด
+      clonedContainer.style.position = 'absolute';
+      clonedContainer.style.left = '-9999px'; // ซ่อนไว้ข้างนอกแบบไม่ให้ผู้ใช้เห็น
+      clonedContainer.style.top = '0';
+      clonedContainer.style.width = '1050px';  // ล็อคขนาดความกว้างแบบกางเต็มที่ให้พอดีกับกระดาษแนวนอน A4
+      clonedContainer.style.background = '#ffffff';
+      clonedContainer.style.padding = '15px';
+      clonedContainer.style.boxShadow = 'none';
+      
+      // 4. บังคับให้ตารางย่อยด้านในขยายเต็มพื้นที่ ไม่หด ไม่เลื่อนสกรอลล์
+      const tableContainer = clonedContainer.querySelector('.table-container');
+      if (tableContainer) {
+        tableContainer.style.maxHeight = 'none';
+        tableContainer.style.overflow = 'visible';
+        tableContainer.style.width = '100%';
+        
+        const table = tableContainer.querySelector('table');
+        if (table) {
+          table.style.width = '100%';
+          table.style.minWidth = '0'; // ยอมให้ยืดหดตามขนาดหน้า 1050px
+        }
+      }
+      
+      // 5. ปลดล็อคความเป็น Sticky ของหัวตารางภายในชุดโคลน
+      const thElements = clonedContainer.querySelectorAll('thead th');
       thElements.forEach(th => {
-        originalThPositions.push(th.style.position || '');
         th.style.position = 'static';
       });
+      
+      // 6. นำชุดโคลนที่จัดระเบียบเรียบร้อยแล้ว แปะลงใน Body ชั่วคราวเพื่อให้ไลบรารีมองเห็นพิกัด
+      document.body.appendChild(clonedContainer);
 
+      // 7. สั่งพิมพ์จาก Element ตัวโคลนอิสระชิ้นนี้
       html2pdf().set({ 
         margin: [10, 10, 10, 10],
         filename: 'สถิติอุปกรณ์.pdf', 
-        image: { type: 'jpeg', quality: 1 },
+        image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
           scale: 2, 
-          scrollX: 0, // บังคับให้เริ่มแคปจากมุมแกน X เป็น 0 เสมอ
-          scrollY: 0,
-          windowWidth: container.scrollWidth // ให้ความกว้างครอบคลุมข้อมูลทั้งหมดไม่ให้โดนตัด
+          useCORS: true,
+          logging: false,
+          scrollX: 0,
+          scrollY: 0
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
-      }).from(container).save().then(() => { 
-        // 4. คืนค่า Style กลับเป็นเหมือนเดิมหลังจากเซฟเสร็จ
-        tableDiv.style.maxHeight = originalMaxHeight;
-        tableDiv.style.overflow = originalOverflow;
-        if(downloadBtn) downloadBtn.style.display = originalDisplay;
-        
-        thElements.forEach((th, index) => {
-          th.style.position = originalThPositions[index];
-        });
-
+      }).from(clonedContainer).save().then(() => { 
+        // 8. เคลียร์ทำลายข้อมูลโคลนทิ้งหลังเซฟเสร็จสิ้น
+        if (clonedContainer.parentNode) {
+          document.body.removeChild(clonedContainer);
+        }
         hideLoader(); 
-        showAlert('ดาวน์โหลดและจัดหน้ากระดาษสำเร็จ!'); 
+        showAlert('ดาวน์โหลดสถิติสำเร็จ!'); 
+      }).catch(err => {
+        console.error("PDF Export Error: ", err);
+        if (clonedContainer.parentNode) {
+          document.body.removeChild(clonedContainer);
+        }
+        hideLoader();
+        showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
       });
     }
 
