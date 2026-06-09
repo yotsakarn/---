@@ -384,7 +384,7 @@
         window.allItems = items || [];
         window.allBorrowedItems = borrowed || [];
         window.allStats = stats || {};
-
+        
         renderedViews.clear();
 
         const activeView = document.querySelector('.view.active');
@@ -727,53 +727,13 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF เวอร์ชันแก้ปัญหาขอบแหว่งสมบูรณ์แบบ ---
+    // --- ฟังก์ชันดาวน์โหลด PDF เวอร์ชันแก้ปัญหาขอบแหว่งและหน้าขาวสมบูรณ์แบบ ---
     function exportStatsToPDF() {
       showLoader(); 
       
       const originalContainer = document.getElementById('usage-stats-container');
       
-      // 1. คัดลอก Node ของตารางแยกออกมาอิสระ เพื่อไม่ให้กระทบหน้าเว็บหลัก
-      const clonedContainer = originalContainer.cloneNode(true);
-      
-      // 2. ลบปุ่มดาวน์โหลดออกไปจากชิ้นที่โคลน (จะได้ไม่โผล่ไปใน PDF)
-      const downloadBtn = clonedContainer.querySelector('button');
-      if (downloadBtn) downloadBtn.remove();
-      
-      // 3. กำหนด Style ให้กล่องที่โคลนออกมาเป็นอิสระ ปลดล็อก CSS ของ Parent ทั้งหมด
-      clonedContainer.style.position = 'absolute';
-      clonedContainer.style.left = '-9999px'; // ซ่อนไว้ข้างนอกแบบไม่ให้ผู้ใช้เห็น
-      clonedContainer.style.top = '0';
-      clonedContainer.style.width = '1050px';  // ล็อคขนาดความกว้างแบบกางเต็มที่ให้พอดีกับกระดาษแนวนอน A4
-      clonedContainer.style.background = '#ffffff';
-      clonedContainer.style.padding = '15px';
-      clonedContainer.style.boxShadow = 'none';
-      
-      // 4. บังคับให้ตารางย่อยด้านในขยายเต็มพื้นที่ ไม่หด ไม่เลื่อนสกรอลล์
-      const tableContainer = clonedContainer.querySelector('.table-container');
-      if (tableContainer) {
-        tableContainer.style.maxHeight = 'none';
-        tableContainer.style.overflow = 'visible';
-        tableContainer.style.width = '100%';
-        
-        const table = tableContainer.querySelector('table');
-        if (table) {
-          table.style.width = '100%';
-          table.style.minWidth = '0'; // ยอมให้ยืดหดตามขนาดหน้า 1050px
-        }
-      }
-      
-      // 5. ปลดล็อคความเป็น Sticky ของหัวตารางภายในชุดโคลน
-      const thElements = clonedContainer.querySelectorAll('thead th');
-      thElements.forEach(th => {
-        th.style.position = 'static';
-      });
-      
-      // 6. นำชุดโคลนที่จัดระเบียบเรียบร้อยแล้ว แปะลงใน Body ชั่วคราวเพื่อให้ไลบรารีมองเห็นพิกัด
-      document.body.appendChild(clonedContainer);
-
-      // 7. สั่งพิมพ์จาก Element ตัวโคลนอิสระชิ้นนี้
-      html2pdf().set({ 
+      const opt = { 
         margin: [10, 10, 10, 10],
         filename: 'สถิติอุปกรณ์.pdf', 
         image: { type: 'jpeg', quality: 0.98 },
@@ -781,22 +741,46 @@
           scale: 2, 
           useCORS: true,
           logging: false,
-          scrollX: 0,
-          scrollY: 0
+          scrollY: 0,
+          onclone: function(clonedDoc) {
+            const container = clonedDoc.getElementById('usage-stats-container');
+            const downloadBtn = container.querySelector('button');
+            if (downloadBtn) downloadBtn.style.display = 'none';
+            
+            container.style.width = '1050px';
+            container.style.boxShadow = 'none';
+            container.style.border = 'none';
+            container.style.padding = '0px';
+
+            const tableContainer = container.querySelector('.table-container');
+            if (tableContainer) {
+              tableContainer.style.maxHeight = 'none';
+              tableContainer.style.overflow = 'visible';
+              tableContainer.style.width = '100%';
+              tableContainer.style.border = 'none';
+              tableContainer.style.boxShadow = 'none';
+              
+              const table = tableContainer.querySelector('table');
+              if (table) {
+                table.style.width = '100%';
+                table.style.minWidth = '0';
+              }
+            }
+            
+            const thElements = container.querySelectorAll('thead th');
+            thElements.forEach(th => {
+              th.style.position = 'static';
+            });
+          }
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
-      }).from(clonedContainer).save().then(() => { 
-        // 8. เคลียร์ทำลายข้อมูลโคลนทิ้งหลังเซฟเสร็จสิ้น
-        if (clonedContainer.parentNode) {
-          document.body.removeChild(clonedContainer);
-        }
+      };
+
+      html2pdf().set(opt).from(originalContainer).save().then(() => { 
         hideLoader(); 
         showAlert('ดาวน์โหลดสถิติสำเร็จ!'); 
       }).catch(err => {
         console.error("PDF Export Error: ", err);
-        if (clonedContainer.parentNode) {
-          document.body.removeChild(clonedContainer);
-        }
         hideLoader();
         showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
       });
