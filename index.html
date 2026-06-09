@@ -720,66 +720,49 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF เวอร์ชันแก้ปัญหาอย่างเด็ดขาด (แก้ภาพแหว่งซ้าย) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปัญหาอย่างเด็ดขาดด้วยวิธีสร้างร่างโคลนหลังฉาก) ---
     function exportStatsToPDF() {
       showLoader(); 
       
-      // 1. อ้างอิง Element จริงบนหน้าเว็บ
-      const container = document.getElementById('usage-stats-container');
-      const tableContainer = container.querySelector('.table-container');
-      const downloadBtn = container.querySelector('button');
-      const mainContainer = document.querySelector('main.container');
-      const thElements = container.querySelectorAll('thead th');
+      // 1. อ้างอิงกล่องตารางต้นฉบับบนเว็บ
+      const originalContainer = document.getElementById('usage-stats-container');
       
-      // 2. บันทึกสไตล์ดั้งเดิมทั้งหมดเก็บไว้ก่อนนำคืนค่าเดิม
-      const origTableMaxHeight = tableContainer.style.maxHeight;
-      const origTableOverflow = tableContainer.style.overflow;
-      const origTableOverflowX = tableContainer.style.overflowX;
-      const origBtnDisplay = downloadBtn.style.display;
+      // 2. สร้างร่างโคลน (Clone) ขึ้นมาใหม่แยกจากหน้าจอหลักโดยสิ้นเชิง
+      const printContainer = originalContainer.cloneNode(true);
       
-      const origBodyOverflowY = document.body.style.overflowY;
-      const origBodyHeight = document.body.style.height;
-      const origHtmlOverflow = document.documentElement.style.overflow;
-      const origHtmlHeight = document.documentElement.style.height;
-      const origMainOverflowY = mainContainer.style.overflowY;
-      const origMainOverflowX = mainContainer.style.overflowX;
-      const origMainHeight = mainContainer.style.height;
-      const origContainerWidth = container.style.width;
+      // 3. จัดสไตล์กล่องโคลนให้เหมาะสมกับการพิมพ์
+      // ลบปุ่มดาวน์โหลดออกจากกล่องโคลน
+      const downloadBtn = printContainer.querySelector('button');
+      if (downloadBtn) downloadBtn.remove();
       
-      const origThPositions = [];
-      thElements.forEach(th => {
-        origThPositions.push(th.style.position);
-      });
-
-      // 3. สำคัญมาก: เคลียร์ระยะ Scroll ทั้งหมดให้กลับไปจุดบนซ้ายสุด (0,0) ป้องกันภาพตัด
-      window.scrollTo(0, 0);
-      mainContainer.scrollTo(0, 0);
-      tableContainer.scrollTo(0, 0);
-
-      // 4. ปลดล็อกข้อจำกัดทางสไตล์ทั้งหมดบนหน้าจอจริงแบบเสี้ยววินาที
-      tableContainer.style.maxHeight = 'none';
-      tableContainer.style.overflow = 'visible';
-      tableContainer.style.overflowX = 'visible';
-      downloadBtn.style.display = 'none'; // ซ่อนปุ่มดาวน์โหลด
+      // ลบความสูงสูงสุด (max-height) และล็อกให้ตารางขยายตัวเต็มที่ ไม่ให้มีแถบ Scroll
+      const tableContainer = printContainer.querySelector('.table-container');
+      if (tableContainer) {
+        tableContainer.style.maxHeight = 'none';
+        tableContainer.style.overflow = 'visible';
+        tableContainer.style.overflowX = 'visible';
+        tableContainer.style.boxShadow = 'none';
+        tableContainer.style.border = 'none';
+      }
       
-      document.body.style.overflowY = 'visible';
-      document.body.style.height = 'auto';
-      document.documentElement.style.overflow = 'visible';
-      document.documentElement.style.height = 'auto';
-      
-      mainContainer.style.overflowY = 'visible';
-      mainContainer.style.overflowX = 'visible';
-      mainContainer.style.height = 'auto';
-      
-      // บังคับความกว้างกล่องให้กว้างพอดีกับกระดาษแนวนอน (ป้องกันตัวหนังสือโดนบีบ/ทับ)
-      container.style.width = '1100px';
-
-      // เปลี่ยนจาก Sticky เป็น Static
-      thElements.forEach(th => {
+      // รีเซ็ตหัวตารางจาก Sticky ให้เป็น Static ป้องกันส่วนหัวเบลอหรือซ้อนทับกัน
+      const ths = printContainer.querySelectorAll('th');
+      ths.forEach(th => {
         th.style.position = 'static';
       });
+      
+      // 4. ตั้งค่าหน้ากล่องโคลนให้มีขนาดกว้างคงที่ 1100px แล้วย้ายไปซ่อนไว้นอกมุมมองหน้าจอปกติ
+      printContainer.style.width = '1100px'; 
+      printContainer.style.position = 'absolute';
+      printContainer.style.top = '-9999px'; 
+      printContainer.style.left = '0';
+      printContainer.style.background = '#ffffff';
+      printContainer.style.padding = '20px';
+      
+      // 5. แปะกล่องโคลนลงใน HTML ชั่วคราว (จำเป็นต่อการเรนเดอร์ภาพของ html2canvas)
+      document.body.appendChild(printContainer);
 
-      // 5. ตั้งค่าหน้า PDF
+      // 6. กำหนดออปชันสำหรับส่งออกไฟล์ PDF แนวนอน
       const opt = { 
         margin: [10, 10, 10, 10],
         filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
@@ -788,48 +771,26 @@
           scale: 2, 
           useCORS: true,
           logging: false,
-          scrollX: 0, // <-- จุดสำคัญที่แก้ปัญหาภาพแหว่งซ้าย
-          scrollY: 0, // <-- จุดสำคัญที่แก้ปัญหาภาพแหว่งบน
-          windowWidth: 1200 
+          windowWidth: 1200 // หลอกบราวเซอร์ว่าขนาดจอกว้างพอที่จะกางตารางได้หมด
         }, 
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'], target: 'tr' }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
       };
 
-      // 6. สั่งพิมพ์จากกล่อง Element
-      html2pdf().set(opt).from(container).save().then(() => { 
-        // 7. เมื่อดึงเสร็จสิ้น ให้คืนค่าสไตล์เดิมทันที
-        restoreOriginalStyles();
+      // 7. สั่งแปลงกล่องโคลนเป็น PDF แล้วบันทึกไฟล์
+      html2pdf().set(opt).from(printContainer).save().then(() => { 
+        // ทำลายกล่องร่างโคลนทิ้งเมื่อทำงานเสร็จสิ้น
+        document.body.removeChild(printContainer); 
         hideLoader(); 
         showAlert('ดาวน์โหลดสถิติสำเร็จ!'); 
       }).catch(err => {
         console.error("PDF Export Error: ", err);
-        restoreOriginalStyles();
+        // เคลียร์กล่องร่างโคลนออกหากเกิดข้อผิดพลาดในการประมวลผล
+        if (document.body.contains(printContainer)) {
+          document.body.removeChild(printContainer);
+        }
         hideLoader();
         showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
       });
-
-      // ฟังก์ชันสำหรับดึงสไตล์เดิมของแอปกลับคืนมา
-      function restoreOriginalStyles() {
-        tableContainer.style.maxHeight = origTableMaxHeight;
-        tableContainer.style.overflow = origTableOverflow;
-        tableContainer.style.overflowX = origTableOverflowX;
-        downloadBtn.style.display = origBtnDisplay;
-        
-        document.body.style.overflowY = origBodyOverflowY;
-        document.body.style.height = origBodyHeight;
-        document.documentElement.style.overflow = origHtmlOverflow;
-        document.documentElement.style.height = origHtmlHeight;
-        
-        mainContainer.style.overflowY = origMainOverflowY;
-        mainContainer.style.overflowX = origMainOverflowX;
-        mainContainer.style.height = origMainHeight;
-        container.style.width = origContainerWidth;
-        
-        thElements.forEach((th, index) => {
-          th.style.position = origThPositions[index];
-        });
-      }
     }
 
     // --- Admin Manage Items ---
