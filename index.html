@@ -22,7 +22,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
   
   <style>
-    /* 1. ล็อคขนาดกล่องทุกชนิดไม่ให้บวมล้นหน้าจอ */
     * { 
       box-sizing: border-box; 
     }
@@ -41,7 +40,6 @@
     
     body, button, input, textarea, select { font-family: 'Prompt', sans-serif; margin: 0; font-size: 18px; }
     
-    /* 2. บล็อกการเลื่อนซ้าย-ขวาของตัวเว็บทั้งหมด */
     body { 
       background-color: var(--light-gray); 
       color: var(--text-color); 
@@ -61,7 +59,6 @@
     
     .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 15px; }
     
-    /* เพิ่ม -webkit-overflow-scrolling: touch; เพื่อให้มือถือเลื่อนหน้าจอได้ลื่นไหลขึ้น */
     main.container { 
       flex-grow: 1; 
       overflow-y: auto; 
@@ -77,7 +74,6 @@
     .search-bar { position: sticky; top: 0; z-index: 990; background-color: var(--light-gray); padding: 10px 0; margin-bottom: 10px; display: flex; gap: 10px; border-bottom: 2px solid #e5e7eb; width: 100%; }
     .search-bar input[type="text"] { flex-grow: 1; min-width: 0; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; }
     
-    /* 3. ล็อคขนาด Grid ให้สมมาตรคงที่ */
     #items-grid { 
       display: grid; 
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
@@ -90,7 +86,6 @@
     .item-card img { width: 100%; height: 130px; object-fit: contain; background-color: #f9fafb; padding: 10px; }
     .item-card-content { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
     
-    /* 4. ล็อคตัวหนังสือยาวๆ ไม่ให้ดันกล่องเพี้ยน */
     .item-card h3 { 
       margin: 0 0 6px 0; 
       font-size: 1.1em; 
@@ -725,7 +720,7 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF เวอร์ชันแก้ปัญหาอย่างเด็ดขาด โดยการปลดล็อกสไตล์หน้าจอจริงชั่วคราว ---
+    // --- ฟังก์ชันดาวน์โหลด PDF เวอร์ชันแก้ปัญหาอย่างเด็ดขาด (แก้ภาพแหว่งซ้าย) ---
     function exportStatsToPDF() {
       showLoader(); 
       
@@ -739,6 +734,7 @@
       // 2. บันทึกสไตล์ดั้งเดิมทั้งหมดเก็บไว้ก่อนนำคืนค่าเดิม
       const origTableMaxHeight = tableContainer.style.maxHeight;
       const origTableOverflow = tableContainer.style.overflow;
+      const origTableOverflowX = tableContainer.style.overflowX;
       const origBtnDisplay = downloadBtn.style.display;
       
       const origBodyOverflowY = document.body.style.overflowY;
@@ -746,17 +742,25 @@
       const origHtmlOverflow = document.documentElement.style.overflow;
       const origHtmlHeight = document.documentElement.style.height;
       const origMainOverflowY = mainContainer.style.overflowY;
+      const origMainOverflowX = mainContainer.style.overflowX;
       const origMainHeight = mainContainer.style.height;
+      const origContainerWidth = container.style.width;
       
       const origThPositions = [];
       thElements.forEach(th => {
         origThPositions.push(th.style.position);
       });
 
-      // 3. ปลดล็อกข้อจำกัดทางสไตล์ทั้งหมดบนหน้าจอจริงแบบเสี้ยววินาที เพื่อให้ html2canvas ดึงข้อมูลได้เต็ม 100%
+      // 3. สำคัญมาก: เคลียร์ระยะ Scroll ทั้งหมดให้กลับไปจุดบนซ้ายสุด (0,0) ป้องกันภาพตัด
+      window.scrollTo(0, 0);
+      mainContainer.scrollTo(0, 0);
+      tableContainer.scrollTo(0, 0);
+
+      // 4. ปลดล็อกข้อจำกัดทางสไตล์ทั้งหมดบนหน้าจอจริงแบบเสี้ยววินาที
       tableContainer.style.maxHeight = 'none';
       tableContainer.style.overflow = 'visible';
-      downloadBtn.style.display = 'none'; // ซ่อนปุ่มดาวน์โหลดไม่ให้ติดเข้าไปใน PDF
+      tableContainer.style.overflowX = 'visible';
+      downloadBtn.style.display = 'none'; // ซ่อนปุ่มดาวน์โหลด
       
       document.body.style.overflowY = 'visible';
       document.body.style.height = 'auto';
@@ -764,14 +768,18 @@
       document.documentElement.style.height = 'auto';
       
       mainContainer.style.overflowY = 'visible';
+      mainContainer.style.overflowX = 'visible';
       mainContainer.style.height = 'auto';
       
-      // เปลี่ยนจาก Sticky เป็น Static เพื่อป้องกันไม่ให้หัวตารางลอยซ้อนทับข้อมูลเวลาขึ้นหน้าใหม่
+      // บังคับความกว้างกล่องให้กว้างพอดีกับกระดาษแนวนอน (ป้องกันตัวหนังสือโดนบีบ/ทับ)
+      container.style.width = '1100px';
+
+      // เปลี่ยนจาก Sticky เป็น Static
       thElements.forEach(th => {
         th.style.position = 'static';
       });
 
-      // 4. ตั้งค่าหน้า PDF แนวนอน (Landscape)
+      // 5. ตั้งค่าหน้า PDF
       const opt = { 
         margin: [10, 10, 10, 10],
         filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
@@ -780,17 +788,17 @@
           scale: 2, 
           useCORS: true,
           logging: false,
-          scrollY: 0,
-          windowWidth: 1200 // ล็อกความกว้างหน้าต่างจำลองตอนวาดให้คงที่เพื่อความสวยงาม
+          scrollX: 0, // <-- จุดสำคัญที่แก้ปัญหาภาพแหว่งซ้าย
+          scrollY: 0, // <-- จุดสำคัญที่แก้ปัญหาภาพแหว่งบน
+          windowWidth: 1200 
         }, 
-        // ป้องกันไม่ให้แถวตารางถูกตัดครึ่งบรรทัดกระดาษ
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'], target: 'tr' }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
       };
 
-      // 5. สั่งพิมพ์จากกล่อง Element ที่ถูกเปิดสไตล์ให้ยาวเต็มพิกัดแล้ว
+      // 6. สั่งพิมพ์จากกล่อง Element
       html2pdf().set(opt).from(container).save().then(() => { 
-        // 6. เมื่อดึงเสร็จสิ้น ให้คืนค่าสไตล์เดิมทันที (หน้าจอแอปจะกลับมาปกติ)
+        // 7. เมื่อดึงเสร็จสิ้น ให้คืนค่าสไตล์เดิมทันที
         restoreOriginalStyles();
         hideLoader(); 
         showAlert('ดาวน์โหลดสถิติสำเร็จ!'); 
@@ -805,6 +813,7 @@
       function restoreOriginalStyles() {
         tableContainer.style.maxHeight = origTableMaxHeight;
         tableContainer.style.overflow = origTableOverflow;
+        tableContainer.style.overflowX = origTableOverflowX;
         downloadBtn.style.display = origBtnDisplay;
         
         document.body.style.overflowY = origBodyOverflowY;
@@ -813,7 +822,9 @@
         document.documentElement.style.height = origHtmlHeight;
         
         mainContainer.style.overflowY = origMainOverflowY;
+        mainContainer.style.overflowX = origMainOverflowX;
         mainContainer.style.height = origMainHeight;
+        container.style.width = origContainerWidth;
         
         thElements.forEach((th, index) => {
           th.style.position = origThPositions[index];
