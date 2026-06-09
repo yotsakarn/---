@@ -720,49 +720,43 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปัญหาอย่างเด็ดขาดด้วยวิธีสร้างร่างโคลนหลังฉาก) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปัญหาหน้าจอขาว) ---
     function exportStatsToPDF() {
-      showLoader(); 
+      showLoader(); // Loader จะบังหน้าจอไว้ ทำให้ผู้ใช้ไม่เห็นจังหวะที่ตารางยืดออก
       
-      // 1. อ้างอิงกล่องตารางต้นฉบับบนเว็บ
-      const originalContainer = document.getElementById('usage-stats-container');
+      const container = document.getElementById('usage-stats-container');
+      const tableContainer = container.querySelector('.table-container');
+      const downloadBtn = container.querySelector('button');
       
-      // 2. สร้างร่างโคลน (Clone) ขึ้นมาใหม่แยกจากหน้าจอหลักโดยสิ้นเชิง
-      const printContainer = originalContainer.cloneNode(true);
-      
-      // 3. จัดสไตล์กล่องโคลนให้เหมาะสมกับการพิมพ์
-      // ลบปุ่มดาวน์โหลดออกจากกล่องโคลน
-      const downloadBtn = printContainer.querySelector('button');
-      if (downloadBtn) downloadBtn.remove();
-      
-      // ลบความสูงสูงสุด (max-height) และล็อกให้ตารางขยายตัวเต็มที่ ไม่ให้มีแถบ Scroll
-      const tableContainer = printContainer.querySelector('.table-container');
-      if (tableContainer) {
-        tableContainer.style.maxHeight = 'none';
-        tableContainer.style.overflow = 'visible';
-        tableContainer.style.overflowX = 'visible';
-        tableContainer.style.boxShadow = 'none';
-        tableContainer.style.border = 'none';
-      }
-      
-      // รีเซ็ตหัวตารางจาก Sticky ให้เป็น Static ป้องกันส่วนหัวเบลอหรือซ้อนทับกัน
-      const ths = printContainer.querySelectorAll('th');
-      ths.forEach(th => {
-        th.style.position = 'static';
-      });
-      
-      // 4. ตั้งค่าหน้ากล่องโคลนให้มีขนาดกว้างคงที่ 1100px แล้วย้ายไปซ่อนไว้นอกมุมมองหน้าจอปกติ
-      printContainer.style.width = '1100px'; 
-      printContainer.style.position = 'absolute';
-      printContainer.style.top = '-9999px'; 
-      printContainer.style.left = '0';
-      printContainer.style.background = '#ffffff';
-      printContainer.style.padding = '20px';
-      
-      // 5. แปะกล่องโคลนลงใน HTML ชั่วคราว (จำเป็นต่อการเรนเดอร์ภาพของ html2canvas)
-      document.body.appendChild(printContainer);
+      // 1. บันทึกตั้งค่า (Style) เดิมของตารางเอาไว้ก่อน
+      const origStyle = {
+        btnDisplay: downloadBtn ? downloadBtn.style.display : '',
+        maxHeight: tableContainer.style.maxHeight,
+        overflow: tableContainer.style.overflow,
+        overflowX: tableContainer.style.overflowX,
+        boxShadow: tableContainer.style.boxShadow,
+        border: tableContainer.style.border,
+        containerWidth: container.style.width,
+        containerBg: container.style.backgroundColor
+      };
 
-      // 6. กำหนดออปชันสำหรับส่งออกไฟล์ PDF แนวนอน
+      // 2. ปรับ Style ชั่วคราว: ปลดข้อจำกัดทั้งหมดและบังคับให้กว้างพอดีกับกระดาษ
+      if (downloadBtn) downloadBtn.style.display = 'none'; // ซ่อนปุ่มโหลด
+      tableContainer.style.maxHeight = 'none';
+      tableContainer.style.overflow = 'visible';
+      tableContainer.style.overflowX = 'visible';
+      tableContainer.style.boxShadow = 'none';
+      tableContainer.style.border = 'none';
+      
+      // ปลดล็อคหัวตารางไม่ให้เลื่อนตาม (ป้องกันการซ้อนทับ)
+      const ths = container.querySelectorAll('th');
+      ths.forEach(th => th.style.position = 'static');
+
+      // กางกล่องตัวจริงให้กว้าง 1100px (ทำตอนที่ Loader บังอยู่)
+      container.style.width = '1100px';
+      container.style.backgroundColor = '#ffffff';
+
+      // 3. ตั้งค่าการออก PDF
       const opt = { 
         margin: [10, 10, 10, 10],
         filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
@@ -770,27 +764,37 @@
         html2canvas: { 
           scale: 2, 
           useCORS: true,
-          logging: false,
-          windowWidth: 1200 // หลอกบราวเซอร์ว่าขนาดจอกว้างพอที่จะกางตารางได้หมด
+          windowWidth: 1200 // หลอกให้ระบบคิดว่าหน้าจอกว้าง 1200px
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
       };
 
-      // 7. สั่งแปลงกล่องโคลนเป็น PDF แล้วบันทึกไฟล์
-      html2pdf().set(opt).from(printContainer).save().then(() => { 
-        // ทำลายกล่องร่างโคลนทิ้งเมื่อทำงานเสร็จสิ้น
-        document.body.removeChild(printContainer); 
+      // 4. สั่งสร้าง PDF แล้วคืนค่า Style เดิมทันทีเมื่อเสร็จ
+      html2pdf().set(opt).from(container).save().then(() => { 
+        revertStyles(); // เรียกฟังก์ชันคืนค่าเดิม
         hideLoader(); 
         showAlert('ดาวน์โหลดสถิติสำเร็จ!'); 
       }).catch(err => {
         console.error("PDF Export Error: ", err);
-        // เคลียร์กล่องร่างโคลนออกหากเกิดข้อผิดพลาดในการประมวลผล
-        if (document.body.contains(printContainer)) {
-          document.body.removeChild(printContainer);
-        }
+        revertStyles(); // ถ้าเจอ Error ก็ต้องคืนค่าเดิมด้วย
         hideLoader();
         showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
       });
+
+      // ฟังก์ชันสำหรับ "ประกอบร่าง" กลับคืนสภาพเดิม
+      function revertStyles() {
+        if (downloadBtn) downloadBtn.style.display = origStyle.btnDisplay;
+        tableContainer.style.maxHeight = origStyle.maxHeight;
+        tableContainer.style.overflow = origStyle.overflow;
+        tableContainer.style.overflowX = origStyle.overflowX;
+        tableContainer.style.boxShadow = origStyle.boxShadow;
+        tableContainer.style.border = origStyle.border;
+        container.style.width = origStyle.containerWidth;
+        container.style.backgroundColor = origStyle.containerBg;
+        
+        // คืนค่าหัวตารางกลับไปให้ CSS จัดการ (เป็น sticky เหมือนเดิม)
+        ths.forEach(th => th.style.position = ''); 
+      }
     }
 
     // --- Admin Manage Items ---
