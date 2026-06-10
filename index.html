@@ -247,8 +247,8 @@
       <div id="stats-grid"></div>
       <div id="usage-stats-container" style="margin-top: 20px; background-color: var(--white); padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h3 style="font-size: 1.1em; margin: 0;">สถิติการใช้งานและยอดคงเหลือ (รายอุปกรณ์)</h3>
-          <button onclick="exportStatsToPDF()" class="btn btn-secondary" style="background-color: #ef4444; border: none;">📄 ดาวน์โหลด PDF</button>
+          <h3 style="font-size: 1.1em; margin: 0; font-weight: bold; color: var(--text-color);">สถิติการใช้งานและยอดคงเหลือ (รายอุปกรณ์)</h3>
+          <button onclick="exportStatsToPDF()" class="btn btn-secondary" style="background-color: #ef4444; border: none; padding: 8px 16px;">📄 ดาวน์โหลด PDF</button>
         </div>
         <div class="table-container" style="max-height: 400px; box-shadow: none; border: 1px solid #e5e7eb;">
           <table>
@@ -611,7 +611,7 @@
         
         if (isSelected) {
             btn.dataset.selected = 'false'; 
-            btn.className = 'btn btn-primary return-toggle-btn'; 
+            btn.className = 'btn btn-primary'; 
             btn.textContent = 'กดเลือก';
             goodInput.readOnly = true; 
             consumedInput.readOnly = true; 
@@ -619,7 +619,7 @@
             consumedInput.classList.remove('highlight-input');
         } else {
             btn.dataset.selected = 'true'; 
-            btn.className = 'btn btn-secondary return-toggle-btn selected'; 
+            btn.className = 'btn btn-secondary selected'; 
             btn.textContent = 'เลือกแล้ว';
             
             if (!isSingle) {
@@ -720,15 +720,15 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปัญหาหน้าจอขาว และข้อมูลไม่ครบ) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปรับปรุงให้กางเต็มหน้ากระดาษ A4 แนวนอน ไม่บีบตัวหนังสือแหว่ง) ---
     function exportStatsToPDF() {
-      showLoader(); // Loader จะบังหน้าจอไว้ ทำให้ผู้ใช้ไม่เห็นจังหวะที่ตารางยืดออก
+      showLoader();
       
       const container = document.getElementById('usage-stats-container');
       const tableContainer = container.querySelector('.table-container');
       const downloadBtn = container.querySelector('button');
       
-      // 1. บันทึกตั้งค่า (Style) เดิมของตารางเอาไว้ก่อน
+      // 1. บันทึกสไตล์ CSS เดิมเก็บไว้
       const origStyle = {
         btnDisplay: downloadBtn ? downloadBtn.style.display : '',
         maxHeight: tableContainer.style.maxHeight,
@@ -738,71 +738,77 @@
         boxShadow: tableContainer.style.boxShadow,
         border: tableContainer.style.border,
         containerWidth: container.style.width,
+        containerMaxWidth: container.style.maxWidth,
         containerHeight: container.style.height,
         containerBg: container.style.backgroundColor
       };
 
-      // 2. ปรับ Style ชั่วคราว: ปลดข้อจำกัดทั้งหมดและบังคับให้กางเต็ม 100%
-      if (downloadBtn) downloadBtn.style.display = 'none'; // ซ่อนปุ่มโหลด
-      tableContainer.style.maxHeight = 'none';
-      tableContainer.style.height = 'auto'; // บังคับยืดความสูง
-      tableContainer.style.overflow = 'visible';
-      tableContainer.style.overflowX = 'visible';
-      tableContainer.style.boxShadow = 'none';
-      tableContainer.style.border = 'none';
+      // 2. ซ่อนปุ่มดาวน์โหลดเพื่อให้ไฟล์ PDF ออกมาสะอาดเหมือนต้นฉบับ
+      if (downloadBtn) downloadBtn.style.setProperty('display', 'none', 'important');
+
+      // 3. แปลงสภาพสไตล์ชั่วคราว ขยายหน้ากว้างจำลอง (Virtual Desktop Width) ให้กางเต็มพื้นที่ 1140px
+      // เพื่อให้สัดส่วนของตารางกางออกเต็มความกว้างแนวนอนของกระดาษ A4 (A4 Landscape aspect ratio) พอดี
+      container.style.setProperty('width', '1140px', 'important');
+      container.style.setProperty('max-width', '1140px', 'important');
+      container.style.setProperty('height', 'auto', 'important');
+      container.style.setProperty('background-color', '#ffffff', 'important');
+
+      tableContainer.style.setProperty('max-height', 'none', 'important');
+      tableContainer.style.setProperty('height', 'auto', 'important');
+      tableContainer.style.setProperty('overflow', 'visible', 'important');
+      tableContainer.style.setProperty('overflow-x', 'visible', 'important');
+      tableContainer.style.setProperty('box-shadow', 'none', 'important');
+      tableContainer.style.setProperty('border', 'none', 'important');
       
-      // ปลดล็อคหัวตารางไม่ให้เลื่อนตาม (ป้องกันการซ้อนทับ)
+      // ล็อคหัวตารางแบบ static เพื่อไม่ให้เกิดการซ้อนภาพเหลื่อมตอนทำภาพ PDF
       const ths = container.querySelectorAll('th');
-      ths.forEach(th => th.style.position = 'static');
+      ths.forEach(th => th.style.setProperty('position', 'static', 'important'));
 
-      // กางกล่องตัวจริงให้กว้างและสูงพอดีกับเนื้อหา
-      container.style.width = '1200px'; 
-      container.style.height = 'auto';
-      container.style.backgroundColor = '#ffffff';
-
-      // 3. ตั้งค่าการออก PDF (เพิ่ม ScrollY และ Pagebreak)
+      // 4. การตั้งค่าคอนฟิกตัวแปลง HTML เป็น PDF
       const opt = { 
-        margin: [10, 10, 10, 10], // ระยะขอบ (บน, ซ้าย, ล่าง, ขวา)
+        margin: [6, 6, 6, 6], // ขอบกระดาษขยับเหลือน้อยที่สุดเพื่อให้หน้าเต็มพื้นที่ (บน, ซ้าย, ล่าง, ขวา)
         filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
-        image: { type: 'jpeg', quality: 1.0 }, // ดัน Quality ให้สูงสุด
+        image: { type: 'jpeg', quality: 1.0 }, 
         html2canvas: { 
-          scale: 2, // ความคมชัด
+          scale: 2, // สเกลระดับความคมชัด
           useCORS: true,
-          scrollY: 0, // บังคับเริ่มถ่ายจากจุดบนสุด (แก้บั๊กโดนตัดขอบ)
-          windowWidth: 1200 
+          scrollY: 0,
+          scrollX: 0,
+          windowWidth: 1140 // กำหนดหน้าต่างจำลองให้ตรงกับสไตล์ความกว้างของคอนเทนเนอร์
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // ป้องกันบรรทัดโดนตัดครึ่ง และขึ้นหน้าใหม่ให้อัตโนมัติ
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
-      // 4. หน่วงเวลา 300ms ให้ Browser วาดตารางเสร็จ 100% ค่อยสั่งทำ PDF
+      // 5. หน่วงเวลาเล็กน้อยให้ Browser ปรับวาดรูปแบบโครงตารางเสร็จสมบูรณ์ ก่อนสั่งถ่ายข้อมูลลง PDF
       setTimeout(() => {
         html2pdf().set(opt).from(container).save().then(() => { 
-          revertStyles(); // เรียกฟังก์ชันคืนค่าเดิม
+          revertStyles(); 
           hideLoader(); 
           showAlert('ดาวน์โหลดสถิติสำเร็จ!'); 
         }).catch(err => {
           console.error("PDF Export Error: ", err);
-          revertStyles(); // ถ้าเจอ Error ก็ต้องคืนค่าเดิมด้วย
+          revertStyles(); 
           hideLoader();
           showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
         });
-      }, 300);
+      }, 350);
 
-      // ฟังก์ชันสำหรับ "ประกอบร่าง" กลับคืนสภาพเดิม
+      // ฟังก์ชันสำหรับคืนสภาพโครงสร้างหน้าจอระบบกลับสู่ปกติ
       function revertStyles() {
         if (downloadBtn) downloadBtn.style.display = origStyle.btnDisplay;
+        container.style.width = origStyle.containerWidth;
+        container.style.maxWidth = origStyle.containerMaxWidth;
+        container.style.height = origStyle.containerHeight;
+        container.style.backgroundColor = origStyle.containerBg;
+
         tableContainer.style.maxHeight = origStyle.maxHeight;
         tableContainer.style.height = origStyle.height;
         tableContainer.style.overflow = origStyle.overflow;
         tableContainer.style.overflowX = origStyle.overflowX;
         tableContainer.style.boxShadow = origStyle.boxShadow;
         tableContainer.style.border = origStyle.border;
-        container.style.width = origStyle.containerWidth;
-        container.style.height = origStyle.containerHeight;
-        container.style.backgroundColor = origStyle.containerBg;
         
-        // คืนค่าหัวตารางกลับไปให้ CSS จัดการ (เป็น sticky เหมือนเดิม)
         ths.forEach(th => th.style.position = ''); 
       }
     }
