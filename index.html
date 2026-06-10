@@ -720,15 +720,13 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF (อัปเดต: แก้ไขปัญหาหน้าจอขาวล้วนจากสกรอลล์เฟรม) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF (อัปเดต: แก้ไขวรรณยุกต์ลอย/ตัวอักษรภาษาไทยทับซ้อน) ---
     function exportStatsToPDF() {
-      // 1. เปิดสปินเนอร์และย้อมพื้นหลังหลังฉากเป็นสีขาวเพื่อความสวยงาม
       const loader = document.getElementById('loader');
       const originalLoaderBg = loader.style.backgroundColor;
       loader.style.backgroundColor = '#ffffff'; 
       showLoader();
       
-      // 2. เรียกใช้งาน DOM จริงที่จะทำการพิมพ์และซ่อนชิ้นส่วนอื่นๆ
       const stickyHeader = document.querySelector('.sticky-header');
       const mainContainer = document.querySelector('main.container');
       const statsGrid = document.getElementById('stats-grid');
@@ -738,8 +736,9 @@
       const pdfBtn = targetContainer.querySelector('button');
       const tableContainer = targetContainer.querySelector('.table-container');
       const ths = targetContainer.querySelectorAll('th');
+      const tds = targetContainer.querySelectorAll('td');
 
-      // 3. เก็บค่าสไตล์ดั้งเดิมไว้เพื่อรีเซ็ตกลับคืนในตอนท้าย
+      // บันทึกค่าสไตล์ดั้งเดิมไว้เพื่อรีเซ็ตกลับคืน
       const origBodyOverflow = document.body.style.overflow;
       const origBodyHeight = document.body.style.height;
       const origMainOverflow = mainContainer.style.overflowY;
@@ -749,13 +748,34 @@
       const origTableMaxHeight = tableContainer ? tableContainer.style.maxHeight : '';
       const origTableOverflow = tableContainer ? tableContainer.style.overflow : '';
 
-      // 4. บังคับซ่อนส่วนอื่นๆ ให้เหลือตารางสถิติตัวนี้แสดงผลโดดๆ บนหน้าจอจริง
+      // [จุดสำคัญที่เพิ่มเข้ามา] บันทึกและบังคับสลับฟอนต์เป็น Tahoma ชั่วคราวเพื่อกันตัวอักษรภาษาไทยทับซ้อนกัน
+      const origTargetFont = targetContainer.style.fontFamily;
+      targetContainer.style.fontFamily = 'Tahoma, Geneva, sans-serif';
+
+      // จัดระเบียบระยะห่างบรรทัดของเซลล์ในตารางทั้งหมดชั่วคราว ป้องกันสระบน-ล่างชนกัน
+      const origCellStyles = [];
+      const allCells = targetContainer.querySelectorAll('th, td');
+      allCells.forEach(cell => {
+          origCellStyles.push({
+              el: cell,
+              lineHeight: cell.style.lineHeight,
+              whiteSpace: cell.style.whiteSpace,
+              wordBreak: cell.style.wordBreak,
+              padding: cell.style.padding
+          });
+          cell.style.lineHeight = '1.6';       // เพิ่มความสูงของบรรทัด ป้องกันวรรณยุกต์ซ้อนทับกัน
+          cell.style.whiteSpace = 'normal';     // อนุญาตให้ขึ้นบรรทัดใหม่ได้แบบเสรี ไม่ล็อกแถวตรง
+          cell.style.wordBreak = 'break-word'; // ป้องกันข้อความยาวเกินไปดันจนตัวหนังสือซ้อนกัน
+          cell.style.padding = '12px 8px';     // ล็อก Padding ให้ช่องไฟคงที่และอ่านง่าย
+      });
+
+      // สั่งซ่อนองค์ประกอบที่ไม่เกี่ยวข้อง
       if (pdfBtn) pdfBtn.style.display = 'none'; 
       stickyHeader.style.display = 'none';
       statsGrid.style.display = 'none';
       chartsContainer.style.display = 'none';
 
-      // คลายการจำกัดความสูงเพื่อให้ตารางดันตัวยาวลงไปด้านล่างได้เต็มที่
+      // เคลียร์ขอบเขตความสูงหน้าจอชั่วคราว
       document.body.style.overflow = 'visible';
       document.body.style.height = 'auto';
       mainContainer.style.overflowY = 'visible';
@@ -767,14 +787,13 @@
           tableContainer.style.overflow = 'visible';
       }
       
-      // ปลดความเหนียว (Sticky Header) ของหัวตารางเพื่อป้องกันข้อความซ้อนกันตอนจัดหน้ากระดาษ
       const origThPositions = [];
       ths.forEach(th => {
           origThPositions.push(th.style.position);
           th.style.position = 'static';
       });
 
-      // ตั้งค่าคอนฟิกของ html2pdf
+      // ตั้งค่า html2pdf โดยปรับแต่งเพื่อให้ html2canvas เรนเดอร์ตัวอักษรได้นิ่งขึ้น
       const opt = { 
         margin: [15, 15, 15, 15], 
         filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
@@ -782,20 +801,20 @@
         html2canvas: { 
           scale: 2, 
           useCORS: true,
-          logging: false
+          logging: false,
+          letterRendering: false // ห้ามเปิด True ในภาษาไทยเด็ดขาด เพราะสระจะกระเด็นหลุดตำแหน่ง
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
 
-      // 5. ดีเลย์เล็กน้อยเพื่อให้หน้าจอเปลี่ยนแกนพิกัดได้สำเร็จก่อนบันทึกภาพ
       setTimeout(() => {
-        // [แกนหลักในการแก้ปัญหา] บังคับเลื่อนหน้าจอการทำงานหลักและบราวเซอร์ทั้งหมดขึ้นไปด้านบนสุด (พิกัด 0,0)
+        // จัดสกรอลล์ให้อยู่บนสุดก่อนถ่ายภาพ
         window.scrollTo(0, 0);
         mainContainer.scrollTo(0, 0);
         document.body.scrollTo(0, 0);
 
         html2pdf().set(opt).from(targetContainer).save().then(() => {
-          // 6. บันทึกสำเร็จแล้ว ย้อนคืนค่ากลับมาเป็นแอปพลิเคชันเดิมทุกประการ
+          // --- กู้คืนสถานะสไตล์กลับมาเป็นปกติหลังดาวน์โหลดเสร็จ ---
           if (pdfBtn) pdfBtn.style.display = '';
           stickyHeader.style.display = '';
           statsGrid.style.display = '';
@@ -816,12 +835,21 @@
               th.style.position = origThPositions[idx];
           });
 
+          // คืนค่าฟอนต์ Prompt และสไตล์ของช่องตารางดั้งเดิม
+          targetContainer.style.fontFamily = origTargetFont;
+          origCellStyles.forEach(item => {
+              item.el.style.lineHeight = item.lineHeight;
+              item.el.style.whiteSpace = item.whiteSpace;
+              item.el.style.wordBreak = item.wordBreak;
+              item.el.style.padding = item.padding;
+          });
+
           loader.style.backgroundColor = originalLoaderBg; 
           hideLoader();
           showAlert('ดาวน์โหลดสถิติสำเร็จ!');
         }).catch(err => {
           console.error("PDF Export Error:", err);
-          // ระบบฉุกเฉิน: ย้อนคืนค่าสไตล์กลับมาหากเกิดข้อผิดพลาดขึ้นกลางคัน
+          // --- ระบบฟื้นฟูฉุกเฉินกรณีเกิดข้อผิดพลาด ---
           if (pdfBtn) pdfBtn.style.display = '';
           stickyHeader.style.display = '';
           statsGrid.style.display = '';
@@ -836,6 +864,15 @@
               tableContainer.style.overflow = origTableOverflow;
           }
           ths.forEach((th, idx) => { th.style.position = origThPositions[idx]; });
+          
+          targetContainer.style.fontFamily = origTargetFont;
+          origCellStyles.forEach(item => {
+              item.el.style.lineHeight = item.lineHeight;
+              item.el.style.whiteSpace = item.whiteSpace;
+              item.el.style.wordBreak = item.wordBreak;
+              item.el.style.padding = item.padding;
+          });
+          
           loader.style.backgroundColor = originalLoaderBg;
           hideLoader();
           showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
