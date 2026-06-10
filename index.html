@@ -379,7 +379,7 @@
         window.allStats = stats || {};
         
         renderedViews.clear();
-
+        
         const activeView = document.querySelector('.view.active');
         if (activeView) {
             renderViewContent(activeView.id);
@@ -720,7 +720,7 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปัญหาหน้าจอขาว) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปัญหาหน้าจอขาว และข้อมูลไม่ครบ) ---
     function exportStatsToPDF() {
       showLoader(); // Loader จะบังหน้าจอไว้ ทำให้ผู้ใช้ไม่เห็นจังหวะที่ตารางยืดออก
       
@@ -732,17 +732,20 @@
       const origStyle = {
         btnDisplay: downloadBtn ? downloadBtn.style.display : '',
         maxHeight: tableContainer.style.maxHeight,
+        height: tableContainer.style.height,
         overflow: tableContainer.style.overflow,
         overflowX: tableContainer.style.overflowX,
         boxShadow: tableContainer.style.boxShadow,
         border: tableContainer.style.border,
         containerWidth: container.style.width,
+        containerHeight: container.style.height,
         containerBg: container.style.backgroundColor
       };
 
-      // 2. ปรับ Style ชั่วคราว: ปลดข้อจำกัดทั้งหมดและบังคับให้กว้างพอดีกับกระดาษ
+      // 2. ปรับ Style ชั่วคราว: ปลดข้อจำกัดทั้งหมดและบังคับให้กางเต็ม 100%
       if (downloadBtn) downloadBtn.style.display = 'none'; // ซ่อนปุ่มโหลด
       tableContainer.style.maxHeight = 'none';
+      tableContainer.style.height = 'auto'; // บังคับยืดความสูง
       tableContainer.style.overflow = 'visible';
       tableContainer.style.overflowX = 'visible';
       tableContainer.style.boxShadow = 'none';
@@ -752,44 +755,51 @@
       const ths = container.querySelectorAll('th');
       ths.forEach(th => th.style.position = 'static');
 
-      // กางกล่องตัวจริงให้กว้าง 1100px (ทำตอนที่ Loader บังอยู่)
-      container.style.width = '1100px';
+      // กางกล่องตัวจริงให้กว้างและสูงพอดีกับเนื้อหา
+      container.style.width = '1200px'; 
+      container.style.height = 'auto';
       container.style.backgroundColor = '#ffffff';
 
-      // 3. ตั้งค่าการออก PDF
+      // 3. ตั้งค่าการออก PDF (เพิ่ม ScrollY และ Pagebreak)
       const opt = { 
-        margin: [10, 10, 10, 10],
+        margin: [10, 10, 10, 10], // ระยะขอบ (บน, ซ้าย, ล่าง, ขวา)
         filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg', quality: 1.0 }, // ดัน Quality ให้สูงสุด
         html2canvas: { 
-          scale: 2, 
+          scale: 2, // ความคมชัด
           useCORS: true,
-          windowWidth: 1200 // หลอกให้ระบบคิดว่าหน้าจอกว้าง 1200px
+          scrollY: 0, // บังคับเริ่มถ่ายจากจุดบนสุด (แก้บั๊กโดนตัดขอบ)
+          windowWidth: 1200 
         }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // ป้องกันบรรทัดโดนตัดครึ่ง และขึ้นหน้าใหม่ให้อัตโนมัติ
       };
 
-      // 4. สั่งสร้าง PDF แล้วคืนค่า Style เดิมทันทีเมื่อเสร็จ
-      html2pdf().set(opt).from(container).save().then(() => { 
-        revertStyles(); // เรียกฟังก์ชันคืนค่าเดิม
-        hideLoader(); 
-        showAlert('ดาวน์โหลดสถิติสำเร็จ!'); 
-      }).catch(err => {
-        console.error("PDF Export Error: ", err);
-        revertStyles(); // ถ้าเจอ Error ก็ต้องคืนค่าเดิมด้วย
-        hideLoader();
-        showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
-      });
+      // 4. หน่วงเวลา 300ms ให้ Browser วาดตารางเสร็จ 100% ค่อยสั่งทำ PDF
+      setTimeout(() => {
+        html2pdf().set(opt).from(container).save().then(() => { 
+          revertStyles(); // เรียกฟังก์ชันคืนค่าเดิม
+          hideLoader(); 
+          showAlert('ดาวน์โหลดสถิติสำเร็จ!'); 
+        }).catch(err => {
+          console.error("PDF Export Error: ", err);
+          revertStyles(); // ถ้าเจอ Error ก็ต้องคืนค่าเดิมด้วย
+          hideLoader();
+          showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
+        });
+      }, 300);
 
       // ฟังก์ชันสำหรับ "ประกอบร่าง" กลับคืนสภาพเดิม
       function revertStyles() {
         if (downloadBtn) downloadBtn.style.display = origStyle.btnDisplay;
         tableContainer.style.maxHeight = origStyle.maxHeight;
+        tableContainer.style.height = origStyle.height;
         tableContainer.style.overflow = origStyle.overflow;
         tableContainer.style.overflowX = origStyle.overflowX;
         tableContainer.style.boxShadow = origStyle.boxShadow;
         tableContainer.style.border = origStyle.border;
         container.style.width = origStyle.containerWidth;
+        container.style.height = origStyle.containerHeight;
         container.style.backgroundColor = origStyle.containerBg;
         
         // คืนค่าหัวตารางกลับไปให้ CSS จัดการ (เป็น sticky เหมือนเดิม)
