@@ -720,97 +720,88 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปรับปรุงให้กางเต็มหน้ากระดาษ A4 แนวนอน ไม่บีบตัวหนังสือแหว่ง) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF (ฉบับแก้ไขสำเร็จ: ป้องกันขอบซ้ายแหว่ง กางเต็มหน้ากระดาษแนวตั้ง/แนวนอนอย่างสมบูรณ์) ---
     function exportStatsToPDF() {
       showLoader();
       
-      const container = document.getElementById('usage-stats-container');
-      const tableContainer = container.querySelector('.table-container');
-      const downloadBtn = container.querySelector('button');
+      // 1. ดึงบล็อกตารางสถิติต้นฉบับมาใช้งาน
+      const originalContainer = document.getElementById('usage-stats-container');
       
-      // 1. บันทึกสไตล์ CSS เดิมเก็บไว้
-      const origStyle = {
-        btnDisplay: downloadBtn ? downloadBtn.style.display : '',
-        maxHeight: tableContainer.style.maxHeight,
-        height: tableContainer.style.height,
-        overflow: tableContainer.style.overflow,
-        overflowX: tableContainer.style.overflowX,
-        boxShadow: tableContainer.style.boxShadow,
-        border: tableContainer.style.border,
-        containerWidth: container.style.width,
-        containerMaxWidth: container.style.maxWidth,
-        containerHeight: container.style.height,
-        containerBg: container.style.backgroundColor
-      };
-
-      // 2. ซ่อนปุ่มดาวน์โหลดเพื่อให้ไฟล์ PDF ออกมาสะอาดเหมือนต้นฉบับ
-      if (downloadBtn) downloadBtn.style.setProperty('display', 'none', 'important');
-
-      // 3. แปลงสภาพสไตล์ชั่วคราว ขยายหน้ากว้างจำลอง (Virtual Desktop Width) ให้กางเต็มพื้นที่ 1140px
-      // เพื่อให้สัดส่วนของตารางกางออกเต็มความกว้างแนวนอนของกระดาษ A4 (A4 Landscape aspect ratio) พอดี
-      container.style.setProperty('width', '1140px', 'important');
-      container.style.setProperty('max-width', '1140px', 'important');
-      container.style.setProperty('height', 'auto', 'important');
-      container.style.setProperty('background-color', '#ffffff', 'important');
-
-      tableContainer.style.setProperty('max-height', 'none', 'important');
-      tableContainer.style.setProperty('height', 'auto', 'important');
-      tableContainer.style.setProperty('overflow', 'visible', 'important');
-      tableContainer.style.setProperty('overflow-x', 'visible', 'important');
-      tableContainer.style.setProperty('box-shadow', 'none', 'important');
-      tableContainer.style.setProperty('border', 'none', 'important');
+      // 2. Clone (คัดลอก) ตัวตารางออกแยกชิ้นเพื่อสร้างสภาพแวดล้อมเฉพาะกิจ ไม่ยุ่งเกี่ยวกับหน้าจอจริง
+      const pdfClone = originalContainer.cloneNode(true);
       
-      // ล็อคหัวตารางแบบ static เพื่อไม่ให้เกิดการซ้อนภาพเหลื่อมตอนทำภาพ PDF
-      const ths = container.querySelectorAll('th');
+      // 3. กำจัดปุ่มดาวน์โหลดในหน้าก๊อปปี้ทิ้ง เพื่อให้ได้ไฟล์รายงานที่สะอาด
+      const downloadBtn = pdfClone.querySelector('button');
+      if (downloadBtn) downloadBtn.remove();
+      
+      // 4. บังคับกำหนดมิติขนาดวัตถุให้กางเต็มแผ่นในระดับกว้าง 1100px เหมาะสมกับ Ratio A4 แนวนอน
+      pdfClone.style.setProperty('width', '1100px', 'important');
+      pdfClone.style.setProperty('max-width', '1100px', 'important');
+      pdfClone.style.setProperty('height', 'auto', 'important');
+      pdfClone.style.setProperty('background-color', '#ffffff', 'important');
+      pdfClone.style.setProperty('padding', '15px', 'important');
+      pdfClone.style.setProperty('box-sizing', 'border-box', 'important');
+      
+      // ผลักสติ๊กเกอร์เรนเดอร์ย้ายไปหลังฉากหลังเพื่อไม่ให้รบกวนตาผู้ใช้งานระบบ
+      pdfClone.style.setProperty('position', 'absolute', 'important');
+      pdfClone.style.setProperty('left', '-9999px', 'important');
+      pdfClone.style.setProperty('top', '0', 'important');
+      
+      // 5. ชำแหละล้างสไตล์ Overflow ของ Table Container ภายในตัวโคลน ให้เห็นข้อมูลครบถ้วนทุกลำดับ
+      const tableContainer = pdfClone.querySelector('.table-container');
+      if (tableContainer) {
+        tableContainer.style.setProperty('max-height', 'none', 'important');
+        tableContainer.style.setProperty('height', 'auto', 'important');
+        tableContainer.style.setProperty('overflow', 'visible', 'important');
+        tableContainer.style.setProperty('overflow-x', 'visible', 'important');
+        tableContainer.style.setProperty('box-shadow', 'none', 'important');
+        tableContainer.style.setProperty('border', 'none', 'important');
+        tableContainer.style.setProperty('width', '100%', 'important');
+      }
+      
+      const table = pdfClone.querySelector('table');
+      if (table) {
+        table.style.setProperty('width', '100%', 'important');
+        table.style.setProperty('min-width', '0', 'important');
+      }
+      
+      // ปรับให้ TH (หัวตาราง) เลิกสไลด์เลื่อนตามสกรอลล์ เพื่อหลีกเลี่ยงอาการตัวอักษรซ้อนทับเหลื่อม
+      const ths = pdfClone.querySelectorAll('th');
       ths.forEach(th => th.style.setProperty('position', 'static', 'important'));
+      
+      // 6. แปะแผ่นภาพประกอบลงสู่ Document Body ชั่วคราวเพื่อให้ Library สามารถอ่านค่าพิกัดความกว้างได้แม่นยำ
+      document.body.appendChild(pdfClone);
 
-      // 4. การตั้งค่าคอนฟิกตัวแปลง HTML เป็น PDF
+      // 7. จัดระเบียบคอนฟิกหลักของตัวสแนปหน้าจอ html2pdf
       const opt = { 
-        margin: [6, 6, 6, 6], // ขอบกระดาษขยับเหลือน้อยที่สุดเพื่อให้หน้าเต็มพื้นที่ (บน, ซ้าย, ล่าง, ขวา)
+        margin: [8, 8, 8, 8], 
         filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
         image: { type: 'jpeg', quality: 1.0 }, 
         html2canvas: { 
-          scale: 2, // สเกลระดับความคมชัด
+          scale: 2, 
           useCORS: true,
+          allowTaint: true,
           scrollY: 0,
           scrollX: 0,
-          windowWidth: 1140 // กำหนดหน้าต่างจำลองให้ตรงกับสไตล์ความกว้างของคอนเทนเนอร์
+          windowWidth: 1150 // สร้างระนาบหน้าต่างเสมือนให้กว้างครอบคลุมคอลัมน์ชื่ออุปกรณ์ฝั่งซ้ายอย่างสมบูรณ์แบบ
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
-      // 5. หน่วงเวลาเล็กน้อยให้ Browser ปรับวาดรูปแบบโครงตารางเสร็จสมบูรณ์ ก่อนสั่งถ่ายข้อมูลลง PDF
+      // 8. สั่งดำเนินการ Export
       setTimeout(() => {
-        html2pdf().set(opt).from(container).save().then(() => { 
-          revertStyles(); 
+        html2pdf().set(opt).from(pdfClone).save().then(() => { 
+          pdfClone.remove(); // สลายโค้ดลับจำลองทิ้งทันทีเมื่อดาวน์โหลดลงเครื่องเสร็จสิ้น
           hideLoader(); 
-          showAlert('ดาวน์โหลดสถิติสำเร็จ!'); 
+          showAlert('ดาวน์โหลดสถิติเต็มหน้าสำเร็จ!'); 
         }).catch(err => {
           console.error("PDF Export Error: ", err);
-          revertStyles(); 
+          pdfClone.remove(); 
           hideLoader();
           showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
         });
-      }, 350);
-
-      // ฟังก์ชันสำหรับคืนสภาพโครงสร้างหน้าจอระบบกลับสู่ปกติ
-      function revertStyles() {
-        if (downloadBtn) downloadBtn.style.display = origStyle.btnDisplay;
-        container.style.width = origStyle.containerWidth;
-        container.style.maxWidth = origStyle.containerMaxWidth;
-        container.style.height = origStyle.containerHeight;
-        container.style.backgroundColor = origStyle.containerBg;
-
-        tableContainer.style.maxHeight = origStyle.maxHeight;
-        tableContainer.style.height = origStyle.height;
-        tableContainer.style.overflow = origStyle.overflow;
-        tableContainer.style.overflowX = origStyle.overflowX;
-        tableContainer.style.boxShadow = origStyle.boxShadow;
-        tableContainer.style.border = origStyle.border;
-        
-        ths.forEach(th => th.style.position = ''); 
-      }
+      }, 300);
     }
 
     // --- Admin Manage Items ---
