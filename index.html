@@ -45,7 +45,7 @@
       color: var(--text-color); 
       display: flex; 
       flex-direction: column; 
-      height: 100vh; 
+      height: 100dvh; 
       overflow-x: hidden;
       overflow-y: hidden; 
     }
@@ -269,8 +269,8 @@
         </div>
       </div>
       <div id="charts-container" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; justify-content: space-around; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-          <div style="width: 100%; max-width: 350px;"><canvas id="statusPieChart"></canvas></div>
-          <div style="width: 100%; max-width: 450px;"><canvas id="topItemsBarChart"></canvas></div>
+          <div style="width: 100%; max-width: 350px; height: 300px;"><canvas id="statusPieChart"></canvas></div>
+          <div style="width: 100%; max-width: 450px; height: 300px;"><canvas id="topItemsBarChart"></canvas></div>
       </div>
     </div>
   </main>
@@ -364,6 +364,7 @@
     window.onload = async () => { 
         await fetchAllData();
         showView('items-view'); 
+        initEventListeners();
     };
 
     async function fetchAllData() {
@@ -393,18 +394,138 @@
       hideLoader();
     }
 
-    const views = document.querySelectorAll('.view');
-    const navButtons = document.querySelectorAll('.nav-btn');
-    
-    document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
-      btn.addEventListener('click', () => { showView(btn.dataset.view); });
-    });
+    let views, navButtons;
+
+    function initEventListeners() {
+      views = document.querySelectorAll('.view');
+      navButtons = document.querySelectorAll('.nav-btn');
+      
+      document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
+        btn.addEventListener('click', () => { showView(btn.dataset.view); });
+      });
+
+      document.querySelectorAll('.close-btn[data-modal]').forEach(btn => { 
+        btn.addEventListener('click', () => hideModal(btn.dataset.modal)); 
+      });
+
+      document.getElementById('close-item-form-btn').addEventListener('click', () => {
+        hideModal('item-form-modal');
+        showModal('manage-items-modal');
+      });
+
+      // --- Search Logic ---
+      document.getElementById('search-input').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('.item-card').forEach(card => {
+          const title = card.querySelector('h3').textContent.toLowerCase();
+          const desc = card.querySelector('p').textContent.toLowerCase();
+          card.style.display = (title.includes(searchTerm) || desc.includes(searchTerm)) ? 'flex' : 'none';
+        });
+      });
+
+      document.getElementById('return-search-input').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('#return-items-body tr').forEach(row => {
+          row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+        });
+      });
+
+      document.getElementById('history-search-input').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('#hist-body tr').forEach(row => {
+          row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+        });
+      });
+
+      document.getElementById('cart-toggle-btn').addEventListener('click', () => { document.getElementById('cart-container').classList.add('open'); });
+      document.getElementById('cart-close-btn').addEventListener('click', () => { document.getElementById('cart-container').classList.remove('open'); });
+
+      document.getElementById('borrow-btn').addEventListener('click', () => {
+        document.getElementById('cart-container').classList.remove('open'); document.getElementById('borrow-form').reset();
+        const now = new Date(); document.getElementById('borrow-date-display').value = now.toLocaleString('th-TH');
+        document.getElementById('return-date').setAttribute('min', now.toISOString().split('T')[0]); showModal('borrow-modal');
+      });
+
+      document.getElementById('borrow-form').addEventListener('submit', async (e) => {
+        e.preventDefault(); showLoader();
+        const payload = { borrowerName: document.getElementById('borrower-name').value, returnDate: document.getElementById('return-date').value, items: cart.map(c => ({ id: c.id, qty: c.requestQty })) };
+        const res = await AppDB.processBorrow(payload);
+        hideLoader(); 
+        if(res.success) { 
+            showAlert('ยืมสำเร็จ'); 
+            hideModal('borrow-modal'); 
+            cart = []; 
+            updateCartUI(); 
+            await fetchAllData(); 
+        } else { showAlert(res.error, 'error'); }
+      });
+
+      document.getElementById('return-selected-btn').addEventListener('click', () => {
+        const selectedBtns = document.querySelectorAll('.return-toggle-btn[data-selected="true"]'); if(selectedBtns.length === 0) return;
+        Swal.fire({ title: 'ระบุชื่อ-นามสกุลผู้คืน', input: 'text', showCancelButton: true, confirmButtonText: 'ยืนยันคืน', inputValidator: (v) => { if (!v) return 'กรุณาระบุชื่อ!' } }).then(async (result) => {
+          if (result.isConfirmed) {
+            const returnPayload = { returnerName: result.value, items: [] };
+            selectedBtns.forEach(btn => { 
+              const id = btn.dataset.id; 
+              returnPayload.items.push({ 
+                historyId: id, 
+                returnedQty: parseInt(document.getElementById(`ret-good-${id}`).value) || 0, 
+                consumedQty: parseInt(document.getElementById(`ret-consumed-${id}`).value) || 0 
+              }); 
+            });
+            showLoader(); 
+            const res = await AppDB.returnItems(returnPayload);
+            hideLoader();
+            if(res.success){ 
+               showAlert(res.message); 
+               await fetchAllData(); 
+            } else { showAlert(res.error, 'error'); }
+          } 
+        }); 
+      });
+
+      document.getElementById('show-manage-modal-btn').addEventListener('click', () => {
+        Swal.fire({ title: 'สิทธิ์แอดมิน', input: 'password', showCancelButton: true, confirmButtonText: 'ตกลง' }).then(async (res) => {
+          if (res.isConfirmed && res.value === '1234') { 
+             renderManageItemsTable(); 
+             showModal('manage-items-modal'); 
+          }
+          else if (res.isConfirmed) { showAlert('รหัสผ่านไม่ถูกต้อง', 'error'); }
+        });
+      });
+
+      document.getElementById('open-add-new-item-form').addEventListener('click', () => {
+           document.getElementById('item-form').reset(); document.getElementById('item-id').value = ''; document.getElementById('image-preview').style.display = 'none'; document.getElementById('item-image-base64').value = ''; hideModal('manage-items-modal'); showModal('item-form-modal');
+      });
+
+      document.getElementById('item-image-upload').addEventListener('change', function(e) {
+          const file = e.target.files[0]; if (!file || file.size > 250 * 1024) { showAlert('ขนาดไฟล์ห้ามเกิน 250KB', 'warning'); return; }
+          const r = new FileReader(); r.onload = function(ev) { document.getElementById('item-image-base64').value = ev.target.result; document.getElementById('image-preview').src = ev.target.result; document.getElementById('image-preview').style.display = 'block'; }; r.readAsDataURL(file);
+      });
+
+      document.getElementById('item-form').addEventListener('submit', async function(e) {
+          e.preventDefault(); const id = document.getElementById('item-id').value;
+          const payload = { id: id || null, name: document.getElementById('item-name').value, description: document.getElementById('item-description').value, quantity: document.getElementById('item-quantity').value, image: document.getElementById('item-image-base64').value };
+          showLoader(); const res = id ? await AppDB.updateItem(payload) : await AppDB.addItem(payload); hideLoader();
+          if(res.success) { 
+             showAlert('บันทึกสำเร็จ!'); 
+             hideModal('item-form-modal'); showModal('manage-items-modal'); 
+             await fetchAllData();
+             if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
+          }
+      });
+
+      document.getElementById('scan-qr-btn').addEventListener('click', () => { showModal('qr-modal'); startScanner(); });
+      document.getElementById('close-qr-btn').addEventListener('click', () => { stopScanner(); });
+    }
 
     function showView(viewId) {
+      if(!views || !navButtons) return;
       views.forEach(v => v.classList.remove('active'));
-      document.getElementById(viewId).classList.add('active');
-      navButtons.forEach(btn => btn.classList.remove('active'));
+      const targetView = document.getElementById(viewId);
+      if(targetView) targetView.classList.add('active');
       
+      navButtons.forEach(btn => btn.classList.remove('active'));
       const targetBtn = document.querySelector(`[data-view="${viewId}"]`);
       if(targetBtn) targetBtn.classList.add('active');
 
@@ -429,39 +550,6 @@
     function showAlert(msg, icon='success') { Swal.fire({ title: icon==='success'?'สำเร็จ!':'แจ้งเตือน!', text: msg, icon: icon }); }
     function showModal(id) { document.getElementById(id).style.display = 'block'; }
     function hideModal(id) { document.getElementById(id).style.display = 'none'; }
-    
-    document.querySelectorAll('.close-btn[data-modal]').forEach(btn => { 
-      btn.addEventListener('click', () => hideModal(btn.dataset.modal)); 
-    });
-
-    document.getElementById('close-item-form-btn').addEventListener('click', () => {
-      hideModal('item-form-modal');
-      showModal('manage-items-modal');
-    });
-
-    // --- Search Logic ---
-    document.getElementById('search-input').addEventListener('input', function(e) {
-      const searchTerm = e.target.value.toLowerCase();
-      document.querySelectorAll('.item-card').forEach(card => {
-        const title = card.querySelector('h3').textContent.toLowerCase();
-        const desc = card.querySelector('p').textContent.toLowerCase();
-        card.style.display = (title.includes(searchTerm) || desc.includes(searchTerm)) ? 'flex' : 'none';
-      });
-    });
-
-    document.getElementById('return-search-input').addEventListener('input', function(e) {
-      const searchTerm = e.target.value.toLowerCase();
-      document.querySelectorAll('#return-items-body tr').forEach(row => {
-        row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
-      });
-    });
-
-    document.getElementById('history-search-input').addEventListener('input', function(e) {
-      const searchTerm = e.target.value.toLowerCase();
-      document.querySelectorAll('#hist-body tr').forEach(row => {
-        row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
-      });
-    });
 
     // --- Items View (ยืมของ) ---
     function displayItems() {
@@ -506,9 +594,6 @@
       grid.innerHTML = htmlString;
     }
 
-    document.getElementById('cart-toggle-btn').addEventListener('click', () => { document.getElementById('cart-container').classList.add('open'); });
-    document.getElementById('cart-close-btn').addEventListener('click', () => { document.getElementById('cart-container').classList.remove('open'); });
-
     function updateCardQtyIfInCart(id, maxQty) {
        const existingIndex = cart.findIndex(c => c.id == id);
        if (existingIndex >= 0) {
@@ -541,26 +626,6 @@
       cart.forEach((c) => { cartItemsDiv.innerHTML += `<div class="cart-item"><div style="flex-grow: 1;"><div style="font-weight: bold;">${c.name}</div><div style="font-size:0.9em; color:var(--dark-gray);">ยืม: <span style="font-weight:bold; color:var(--primary-color);">${c.requestQty}</span> ชิ้น</div></div><button class="remove-btn" onclick="toggleCart(${c.id})">&times;</button></div>`; });
       document.getElementById('cart-toggle-btn').textContent = `ตะกร้า (${cart.length})`; document.getElementById('borrow-btn').disabled = cart.length === 0;
     }
-
-    document.getElementById('borrow-btn').addEventListener('click', () => {
-      document.getElementById('cart-container').classList.remove('open'); document.getElementById('borrow-form').reset();
-      const now = new Date(); document.getElementById('borrow-date-display').value = now.toLocaleString('th-TH');
-      document.getElementById('return-date').setAttribute('min', now.toISOString().split('T')[0]); showModal('borrow-modal');
-    });
-
-    document.getElementById('borrow-form').addEventListener('submit', async (e) => {
-      e.preventDefault(); showLoader();
-      const payload = { borrowerName: document.getElementById('borrower-name').value, returnDate: document.getElementById('return-date').value, items: cart.map(c => ({ id: c.id, qty: c.requestQty })) };
-      const res = await AppDB.processBorrow(payload);
-      hideLoader(); 
-      if(res.success) { 
-          showAlert('ยืมสำเร็จ'); 
-          hideModal('borrow-modal'); 
-          cart = []; 
-          updateCartUI(); 
-          await fetchAllData(); 
-      } else { showAlert(res.error, 'error'); }
-    });
 
     // --- Return View (คืนของ) ---
     function renderReturnTable() {
@@ -673,9 +738,19 @@
       });
 
       if(myPieChart) myPieChart.destroy(); if(myBarChart) myBarChart.destroy();
-      myPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), { type: 'doughnut', data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems, stats.borrowedItems, stats.totalConsumed], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] } });
+      
+      myPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), { 
+        type: 'doughnut', 
+        data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems, stats.borrowedItems, stats.totalConsumed], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+      
       const topItems = (stats.mostBorrowedItems || []).slice(0, 5);
-      myBarChart = new Chart(document.getElementById('topItemsBarChart').getContext('2d'), { type: 'bar', data: { labels: topItems.map(i => i.name), datasets: [{ label: 'จำนวนครั้งที่ถูกยืม', data: topItems.map(i => i.count), backgroundColor: '#3b82f6' }] } });
+      myBarChart = new Chart(document.getElementById('topItemsBarChart').getContext('2d'), { 
+        type: 'bar', 
+        data: { labels: topItems.map(i => i.name), datasets: [{ label: 'จำนวนครั้งที่ถูกยืม', data: topItems.map(i => i.count), backgroundColor: '#3b82f6' }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
     }
 
     function renderHistoryTable() {
@@ -695,30 +770,6 @@
       const btn = document.getElementById('return-selected-btn'); document.getElementById('return-count').textContent = selectedCount;
       btn.disabled = selectedCount === 0; btn.style.opacity = selectedCount === 0 ? '0.5' : '1';
     }
-
-    document.getElementById('return-selected-btn').addEventListener('click', () => {
-      const selectedBtns = document.querySelectorAll('.return-toggle-btn[data-selected="true"]'); if(selectedBtns.length === 0) return;
-      Swal.fire({ title: 'ระบุชื่อ-นามสกุลผู้คืน', input: 'text', showCancelButton: true, confirmButtonText: 'ยืนยันคืน', inputValidator: (v) => { if (!v) return 'กรุณาระบุชื่อ!' } }).then(async (result) => {
-        if (result.isConfirmed) {
-          const returnPayload = { returnerName: result.value, items: [] };
-          selectedBtns.forEach(btn => { 
-            const id = btn.dataset.id; 
-            returnPayload.items.push({ 
-              historyId: id, 
-              returnedQty: parseInt(document.getElementById(`ret-good-${id}`).value) || 0, 
-              consumedQty: parseInt(document.getElementById(`ret-consumed-${id}`).value) || 0 
-            }); 
-          });
-          showLoader(); 
-          const res = await AppDB.returnItems(returnPayload);
-          hideLoader();
-          if(res.success){ 
-             showAlert(res.message); 
-             await fetchAllData(); 
-          } else { showAlert(res.error, 'error'); }
-        } 
-      }); 
-    });
 
     // --- ฟังก์ชันดาวน์โหลด PDF (เวอร์ชันแก้ไข บังคับทำงานบนวัตถุจริง ป้องกันหน้าขาว 100%) ---
     function exportStatsToPDF() {
@@ -771,16 +822,6 @@
     }
 
     // --- Admin Manage Items ---
-    document.getElementById('show-manage-modal-btn').addEventListener('click', () => {
-      Swal.fire({ title: 'สิทธิ์แอดมิน', input: 'password', showCancelButton: true, confirmButtonText: 'ตกลง' }).then(async (res) => {
-        if (res.isConfirmed && res.value === '1234') { 
-           renderManageItemsTable(); 
-           showModal('manage-items-modal'); 
-        }
-        else if (res.isConfirmed) { showAlert('รหัสผ่านไม่ถูกต้อง', 'error'); }
-      });
-    });
-
     function renderManageItemsTable() {
          const container = document.getElementById('manage-items-table-container');
          let html = `<table><thead><tr><th>รูป</th><th>ชื่ออุปกรณ์</th><th>สต็อกเริ่ม</th><th>พร้อมยืม</th><th>จัดการ</th></tr></thead><tbody>`;
@@ -790,15 +831,11 @@
          container.innerHTML = html + `</tbody></table>`;
     }
 
-    document.getElementById('open-add-new-item-form').addEventListener('click', () => {
-         document.getElementById('item-form').reset(); document.getElementById('item-id').value = ''; document.getElementById('image-preview').style.display = 'none'; document.getElementById('item-image-base64').value = ''; hideModal('manage-items-modal'); showModal('item-form-modal');
-    });
-
     function editItem(id) {
-         const item = window.allItems.find(i => i.id == id); if(!item) return;
-         document.getElementById('item-id').value = item.id; document.getElementById('item-name').value = item.name; document.getElementById('item-description').value = item.description; document.getElementById('item-quantity').value = item.totalQuantity;
-         document.getElementById('image-preview').src = item.image; document.getElementById('image-preview').style.display = 'block'; document.getElementById('item-image-base64').value = item.image;
-         hideModal('manage-items-modal'); showModal('item-form-modal');
+          const item = window.allItems.find(i => i.id == id); if(!item) return;
+          document.getElementById('item-id').value = item.id; document.getElementById('item-name').value = item.name; document.getElementById('item-description').value = item.description; document.getElementById('item-quantity').value = item.totalQuantity;
+          document.getElementById('image-preview').src = item.image; document.getElementById('image-preview').style.display = 'block'; document.getElementById('item-image-base64').value = item.image;
+          hideModal('manage-items-modal'); showModal('item-form-modal');
     }
 
     function deleteItem(id) {
@@ -814,27 +851,7 @@
         });
     }
 
-    document.getElementById('item-image-upload').addEventListener('change', function(e) {
-        const file = e.target.files[0]; if (!file || file.size > 250 * 1024) { showAlert('ขนาดไฟล์ห้ามเกิน 250KB', 'warning'); return; }
-        const r = new FileReader(); r.onload = function(ev) { document.getElementById('item-image-base64').value = ev.target.result; document.getElementById('image-preview').src = ev.target.result; document.getElementById('image-preview').style.display = 'block'; }; r.readAsDataURL(file);
-    });
-
-    document.getElementById('item-form').addEventListener('submit', async function(e) {
-        e.preventDefault(); const id = document.getElementById('item-id').value;
-        const payload = { id: id || null, name: document.getElementById('item-name').value, description: document.getElementById('item-description').value, quantity: document.getElementById('item-quantity').value, image: document.getElementById('item-image-base64').value };
-        showLoader(); const res = id ? await AppDB.updateItem(payload) : await AppDB.addItem(payload); hideLoader();
-        if(res.success) { 
-           showAlert('บันทึกสำเร็จ!'); 
-           hideModal('item-form-modal'); showModal('manage-items-modal'); 
-           await fetchAllData();
-           if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
-        }
-    });
-
     // --- QR Scanner ---
-    document.getElementById('scan-qr-btn').addEventListener('click', () => { showModal('qr-modal'); startScanner(); });
-    document.getElementById('close-qr-btn').addEventListener('click', () => { stopScanner(); });
-
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
       html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, onScanFailure)
