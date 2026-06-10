@@ -720,85 +720,54 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF (อัปเดตใหม่: แก้ไขปัญหา PDF หน้าขาว + ตัวซ้อน 100%) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF (เวอร์ชันแก้ไข บังคับทำงานบนวัตถุจริง ป้องกันหน้าขาว 100%) ---
     function exportStatsToPDF() {
       showLoader();
       
-      // 1. ดึงกล่องตารางสถิติต้นฉบับมา
-      const originalContainer = document.getElementById('usage-stats-container');
+      const element = document.getElementById('usage-stats-container');
+      const tableContainer = element.querySelector('.table-container');
+      const pdfBtn = element.querySelector('button');
       
-      // 2. โคลนนิ่ง (Clone) ตารางออกมา เพื่อเอามาสับเปลี่ยนสไตล์ข้างนอกหน้าจอ ไม่ให้พังหน้าจอจริง
-      const clonedContainer = originalContainer.cloneNode(true);
+      const originalMaxHeight = tableContainer.style.maxHeight;
+      const originalOverflow = tableContainer.style.overflow;
       
-      // ลบปุ่มดาวน์โหลดออกในไฟล์ PDF เพื่อความสวยงาม
-      const pdfBtn = clonedContainer.querySelector('button');
-      if (pdfBtn) pdfBtn.style.display = 'none';
+      if (pdfBtn) pdfBtn.style.visibility = 'hidden';
       
-      // ปรับแต่งฟอนต์ภาษาไทย Tahoma และเพิ่มความสูงบรรทัดเพื่อป้องกันตัวอักษรหรือสระทับซ้อนกัน
-      clonedContainer.style.fontFamily = 'Tahoma, Geneva, sans-serif';
-      clonedContainer.style.backgroundColor = '#ffffff';
-      clonedContainer.style.padding = '20px';
-      clonedContainer.style.width = '1000px'; // บังคับความกว้างตารางให้กางเต็มแผ่นในหน้ากระดาษ
+      tableContainer.style.maxHeight = 'none';
+      tableContainer.style.overflow = 'visible';
       
-      // สั่งขยายตารางที่ถูกซ่อนอยู่ให้มองเห็นทั้งหมด เพื่อไม่ให้หลุดขอบเป็นหน้าขาว
-      const tableContainer = clonedContainer.querySelector('.table-container');
-      if (tableContainer) {
-          tableContainer.style.maxHeight = 'none';
-          tableContainer.style.overflow = 'visible';
-          tableContainer.style.boxShadow = 'none';
-      }
-      
-      // เคลียร์ค่าสไตล์และจัดสัดส่วนข้อความในช่อง Cell ใหม่
-      const allCells = clonedContainer.querySelectorAll('th, td');
-      allCells.forEach(cell => {
-          cell.style.lineHeight = '1.7';       // ขยายช่องไฟสำหรับวรรณยุกต์ไทย
-          cell.style.whiteSpace = 'normal';     // สั่งให้ตัดคำขึ้นบรรทัดใหม่ได้แบบอัตโนมัติ
-          cell.style.wordBreak = 'break-word'; // ป้องกันข้อความยาวดันขอบหน้ากระดาษพัง
-          cell.style.padding = '12px 8px';     // ล็อกระยะขอบคงที่
-          
-          if(cell.tagName === 'TH') {
-              cell.style.position = 'static';  // ปลดล็อกคุณสมบัติ Sticky หัวตารางขณะเรนเดอร์ลง PDF
-          }
-      });
-      
-      // 3. สร้างกล่องจำลองแอบไว้ใต้หน้าจอ (Off-screen) เพื่อใช้ส่งคำสั่งพิมพ์ภาพ
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '0';
-      tempDiv.appendChild(clonedContainer);
-      document.body.appendChild(tempDiv);
-      
-      // 4. ตั้งค่าคุณสมบัติการดาวน์โหลด PDF
       const opt = { 
         margin: [10, 10, 10, 10], 
         filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
-        image: { type: 'jpeg', quality: 0.98 }, 
+        image: { type: 'jpeg', quality: 0.95 }, 
         html2canvas: { 
-          scale: 2, 
+          scale: 1.5,
           useCORS: true,
           logging: false,
-          letterRendering: false,
-          scrollY: 0, // บังคับเริ่มจับภาพจากจุดบนสุดเสมอ แก้ปัญหาตารางกลายเป็นสีขาวหน้าว่าง
+          letterRendering: true,
+          scrollY: 0,
           scrollX: 0
         }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // เปลี่ยนเป็นแนวนอน (landscape) เพื่อตารางที่สวยงาม
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
       };
 
-      // 5. สั่งดาวน์โหลดจากตารางโคลนใต้จอ
       setTimeout(() => {
-        html2pdf().set(opt).from(clonedContainer).save().then(() => {
-          // เคลียร์เศษขยะและซ่อนตัวโหลดเดอร์เมื่อทำงานสำเร็จ
-          document.body.removeChild(tempDiv);
+        html2pdf().set(opt).from(element).save().then(() => {
+          tableContainer.style.maxHeight = originalMaxHeight;
+          tableContainer.style.overflow = originalOverflow;
+          if (pdfBtn) pdfBtn.style.visibility = 'visible';
+          
           hideLoader();
           showAlert('ดาวน์โหลดสถิติสำเร็จ!');
         }).catch(err => {
           console.error("PDF Export Error:", err);
-          document.body.removeChild(tempDiv);
+          tableContainer.style.maxHeight = originalMaxHeight;
+          tableContainer.style.overflow = originalOverflow;
+          if (pdfBtn) pdfBtn.style.visibility = 'visible';
           hideLoader();
           showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
         });
-      }, 400);
+      }, 300);
     }
 
     // --- Admin Manage Items ---
