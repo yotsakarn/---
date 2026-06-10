@@ -720,7 +720,7 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขใหม่: ใช้ตารางจริงบนจอแก้ปัญหาหน้าขาว 100%) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขเรียบร้อย: ปรับความกว้างให้พอดีหน้ากระดาษแนวตั้ง Portrait) ---
     function exportStatsToPDF() {
       // 1. นำฉาก Loading ขึ้นมาบัง และปรับเป็นทึบแสงสีขาว 100% เพื่อซ่อนการขยายตาราง
       const loader = document.getElementById('loader');
@@ -752,9 +752,9 @@
         thPositions: []
       };
       
-      // 3. ปรับตารางของจริงให้กางออก 1100px (ความกว้างพอดีกระดาษแนวนอน) และลบ Scrollbar
-      container.style.width = '1100px';
-      container.style.maxWidth = '1100px';
+      // 3. ปรับขนาดความกว้างให้เหมาะสมกับสัดส่วนหน้ากระดาษ A4 แนวตั้ง (ประมาณ 800px) และลบ Scrollbar
+      container.style.width = '800px';
+      container.style.maxWidth = '800px';
       
       tableContainer.style.maxHeight = 'none';
       tableContainer.style.overflow = 'visible';
@@ -770,7 +770,7 @@
         th.style.position = 'static'; // เลิกใช้หัวตารางแบบ Sticky ชั่วคราว
       });
 
-      // 4. ตั้งค่าหน้ากระดาษ PDF
+      // 4. ตั้งค่าหน้ากระดาษ PDF เป็นแนวตั้ง (portrait)
       const opt = { 
         margin: [8, 8, 8, 8], 
         filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
@@ -778,9 +778,9 @@
         html2canvas: { 
           scale: 2, 
           useCORS: true,
-          windowWidth: 1120 // บังคับให้ระบบมองเห็นหน้าจอกว้าง 1120px 
+          windowWidth: 820 // บังคับให้ระบบมองเห็นความกว้างหน้าต่างสมดุลกับแนวตั้ง 
         }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
       // 5. สั่งถ่ายภาพและแปลงเป็น PDF
