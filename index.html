@@ -720,70 +720,61 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปัญหาขอบซ้ายโดนตัด) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปัญหาขอบแหว่ง และ ภาพขาวล้วนด้วยวิธี Clone) ---
     function exportStatsToPDF() {
       const loader = document.getElementById('loader');
       const originalLoaderBg = loader.style.backgroundColor;
+      // ทำให้พื้นหลังตอนโหลดเป็นสีขาวทึบ เพื่อบังหน้าจอระหว่างสร้าง PDF
       loader.style.backgroundColor = '#ffffff'; 
       showLoader();
       
-      const container = document.getElementById('usage-stats-container');
-      const tableContainer = container.querySelector('.table-container');
-      const table = container.querySelector('table');
-      const btn = container.querySelector('button');
-      const ths = container.querySelectorAll('th');
+      const originalContainer = document.getElementById('usage-stats-container');
       
-      // 1. จดจำตั้งค่า Style เดิมทั้งหมดไว้
-      const originalStyles = {
-        position: container.style.position,
-        left: container.style.left,
-        top: container.style.top,
-        zIndex: container.style.zIndex,
-        width: container.style.width,
-        maxWidth: container.style.maxWidth,
-        margin: container.style.margin,
-        maxHeight: tableContainer.style.maxHeight,
-        overflow: tableContainer.style.overflow,
-        overflowX: tableContainer.style.overflowX,
-        boxShadow: tableContainer.style.boxShadow,
-        border: tableContainer.style.border,
-        fontSize: table.style.fontSize,
-        minWidth: table.style.minWidth,
-        btnDisplay: btn ? btn.style.display : '',
-        thPositions: []
-      };
+      // 1. โคลน (Copy) ตารางออกมาทั้งหมด เพื่อไม่ให้กระทบหน้าจอจริง
+      const clone = originalContainer.cloneNode(true);
       
-      // 2. รีเซ็ตการเลื่อน Scroll (ดึงตารางกลับมาซ้ายสุด)
-      tableContainer.scrollLeft = 0;
-      window.scrollTo(0, 0);
+      // 2. เอาปุ่ม "ดาวน์โหลด PDF" ออกจากตารางที่โคลนมา
+      const btn = clone.querySelector('button');
+      if (btn) btn.remove();
+
+      // 3. สร้างกรอบ (Wrapper) จำลองสำหรับบังคับขนาดก่อนถ่ายภาพ
+      const printWrapper = document.createElement('div');
+      printWrapper.style.position = 'fixed';
+      printWrapper.style.top = '0';
+      printWrapper.style.left = '0';
+      printWrapper.style.width = '800px'; // บังคับความกว้างให้พอดีหน้า PDF
+      printWrapper.style.backgroundColor = '#ffffff';
+      printWrapper.style.padding = '20px';
+      printWrapper.style.zIndex = '9998'; // ซ่อนไว้ข้างหลังฉาก Loader (Loader = 9999)
       
-      // 3. จัด Layout ใหม่ บังคับให้ลอยชิดขอบซ้ายบน ป้องกันขอบโดนตัดในจอเล็ก
-      container.style.position = 'absolute';
-      container.style.left = '0';
-      container.style.top = '0';
-      container.style.zIndex = '9999';
-      container.style.width = '750px'; 
-      container.style.maxWidth = '750px';
-      container.style.margin = '0';
-      container.style.backgroundColor = '#ffffff';
+      // ปรับแต่ง Style ภายในตารางโคลนให้เหมาะกับกระดาษ A4
+      const tableContainer = clone.querySelector('.table-container');
+      if (tableContainer) {
+          tableContainer.style.maxHeight = 'none';
+          tableContainer.style.overflow = 'visible';
+          tableContainer.style.overflowX = 'visible';
+          tableContainer.style.boxShadow = 'none';
+          tableContainer.style.border = '1px solid #e5e7eb';
+      }
       
-      tableContainer.style.maxHeight = 'none';
-      tableContainer.style.overflow = 'visible';
-      tableContainer.style.overflowX = 'visible';
-      tableContainer.style.boxShadow = 'none';
-      tableContainer.style.border = '1px solid #e5e7eb';
-      
-      // ลดขนาดฟอนต์ตารางลงนิดนึง เพื่อให้คอลัมน์ไม่เบียดกันในแนวตั้ง
-      table.style.fontSize = '12px';
-      table.style.minWidth = '100%';
-      
-      if (btn) btn.style.display = 'none';
-      
-      ths.forEach((th, index) => {
-        originalStyles.thPositions[index] = th.style.position;
-        th.style.position = 'static'; 
+      const table = clone.querySelector('table');
+      if (table) {
+          table.style.fontSize = '12px'; // ปรับฟอนต์ให้เล็กลงนิดนึง
+          table.style.width = '100%';
+          table.style.minWidth = '100%';
+      }
+
+      // ยกเลิกการล็อคหัวตาราง (Sticky Header) เพื่อไม่ให้ตอนพิมพ์ซ้อนกัน
+      const ths = clone.querySelectorAll('th');
+      ths.forEach(th => {
+          th.style.position = 'static'; 
       });
 
+      // นำตารางโคลนใส่กรอบจำลอง แล้วแปะลงบนหน้าจอชั่วคราว
+      printWrapper.appendChild(clone);
+      document.body.appendChild(printWrapper);
+
+      // ตั้งค่าการพิมพ์
       const opt = { 
         margin: [10, 10, 10, 10], // ขอบกระดาษ
         filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
@@ -793,68 +784,28 @@
           useCORS: true,
           scrollX: 0,
           scrollY: 0,
-          windowWidth: 770 // ให้กล้องจำลองความกว้างจอครอบคลุม 750px พอดี
+          windowWidth: 800 // บังคับให้กล้องมองเห็นที่ความกว้าง 800px
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
 
       // 4. สั่งถ่ายภาพและแปลงเป็น PDF
       setTimeout(() => {
-        html2pdf().set(opt).from(container).save().then(() => {
-          // 5. เมื่อดาวน์โหลดเสร็จ คืนสภาพเดิมทั้งหมด
-          container.style.position = originalStyles.position;
-          container.style.left = originalStyles.left;
-          container.style.top = originalStyles.top;
-          container.style.zIndex = originalStyles.zIndex;
-          container.style.width = originalStyles.width;
-          container.style.maxWidth = originalStyles.maxWidth;
-          container.style.margin = originalStyles.margin;
-          container.style.backgroundColor = '';
-          
-          tableContainer.style.maxHeight = originalStyles.maxHeight;
-          tableContainer.style.overflow = originalStyles.overflow;
-          tableContainer.style.overflowX = originalStyles.overflowX;
-          tableContainer.style.boxShadow = originalStyles.boxShadow;
-          tableContainer.style.border = originalStyles.border;
-          
-          table.style.fontSize = originalStyles.fontSize;
-          table.style.minWidth = originalStyles.minWidth;
-          
-          if (btn) btn.style.display = originalStyles.btnDisplay;
-          ths.forEach((th, index) => { th.style.position = originalStyles.thPositions[index]; });
-          
+        html2pdf().set(opt).from(printWrapper).save().then(() => {
+          // ถ่ายเสร็จ ลบกรอบจำลองทิ้ง และคืนค่าฉากโหลดดิ้งเดิม
+          document.body.removeChild(printWrapper);
           loader.style.backgroundColor = originalLoaderBg; 
           hideLoader();
           showAlert('ดาวน์โหลดสถิติสำเร็จ!');
         }).catch(err => {
           console.error("PDF Export Error:", err);
-          
-          container.style.position = originalStyles.position;
-          container.style.left = originalStyles.left;
-          container.style.top = originalStyles.top;
-          container.style.zIndex = originalStyles.zIndex;
-          container.style.width = originalStyles.width;
-          container.style.maxWidth = originalStyles.maxWidth;
-          container.style.margin = originalStyles.margin;
-          container.style.backgroundColor = '';
-          
-          tableContainer.style.maxHeight = originalStyles.maxHeight;
-          tableContainer.style.overflow = originalStyles.overflow;
-          tableContainer.style.overflowX = originalStyles.overflowX;
-          tableContainer.style.boxShadow = originalStyles.boxShadow;
-          tableContainer.style.border = originalStyles.border;
-          
-          table.style.fontSize = originalStyles.fontSize;
-          table.style.minWidth = originalStyles.minWidth;
-          
-          if (btn) btn.style.display = originalStyles.btnDisplay;
-          ths.forEach((th, index) => { th.style.position = originalStyles.thPositions[index]; });
-          
+          // กรณี Error ก็ต้องเคลียร์ของทิ้งเหมือนกัน
+          document.body.removeChild(printWrapper);
           loader.style.backgroundColor = originalLoaderBg;
           hideLoader();
           showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
         });
-      }, 300); 
+      }, 500); // หน่วงเวลาไว้ 0.5 วิ เพื่อให้บราวเซอร์เรนเดอร์ตารางจำลองให้เสร็จก่อนถ่าย
     }
 
     // --- Admin Manage Items ---
