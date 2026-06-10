@@ -617,6 +617,7 @@
       updateReturnCount();
     }
 
+    // 🔥 โค้ดที่ได้รับการแก้ไขแล้ว 🔥
     function toggleReturnBtn(btn) {
         const id = btn.dataset.id; 
         const isSelected = btn.dataset.selected === 'true';
@@ -627,13 +628,13 @@
         
         if (isSelected) {
             btn.dataset.selected = 'false'; 
-            btn.className = 'btn btn-primary'; 
+            btn.className = 'btn btn-primary return-toggle-btn'; 
             btn.textContent = 'กดเลือก';
             goodInput.readOnly = true; consumedInput.readOnly = true; 
             goodInput.classList.remove('highlight-input'); consumedInput.classList.remove('highlight-input');
         } else {
             btn.dataset.selected = 'true'; 
-            btn.className = 'btn btn-secondary selected'; 
+            btn.className = 'btn btn-secondary selected return-toggle-btn'; 
             btn.textContent = 'เลือกแล้ว';
             if (!isSingle) { goodInput.readOnly = false; consumedInput.readOnly = false; } 
             else { goodInput.value = 1; consumedInput.value = 0; }
@@ -652,7 +653,6 @@
       let v = parseInt(c.value) || 0; v = Math.max(0, Math.min(v, total)); c.value = v; g.value = total - v; 
     }
 
-    // 🔥 ส่วนที่แก้ไขให้ปุ่มกดได้ปกติ 🔥
     function updateReturnCount() {
       const selectedCount = document.querySelectorAll('.return-toggle-btn[data-selected="true"]').length;
       const btn = document.getElementById('return-selected-btn'); 
@@ -660,15 +660,13 @@
       document.getElementById('return-count').textContent = selectedCount;
       
       if (selectedCount === 0) {
-        // ล็อกปุ่ม เมื่อไม่ได้เลือกของ
         btn.disabled = true; 
         btn.style.opacity = '0.5';
-        btn.style.cursor = 'not-allowed'; // เมาส์รูปกากบาท
+        btn.style.cursor = 'not-allowed'; 
       } else {
-        // ปลดล็อก เมื่อเลือกของแล้ว
         btn.disabled = false; 
         btn.style.opacity = '1';
-        btn.style.cursor = 'pointer'; // เปลี่ยนเมาส์ให้กดได้
+        btn.style.cursor = 'pointer'; 
       }
     }
 
