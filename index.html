@@ -720,7 +720,7 @@
       }); 
     });
 
-    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปัญหาขอบแหว่ง และ ภาพขาวล้วนด้วยวิธี Clone) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF (แก้ไขปัญหาขอบแหว่ง และ ภาพขาวล้วนด้วยวิธี Clone + ปลดล็อค Layout) ---
     function exportStatsToPDF() {
       const loader = document.getElementById('loader');
       const originalLoaderBg = loader.style.backgroundColor;
@@ -739,7 +739,9 @@
 
       // 3. สร้างกรอบ (Wrapper) จำลองสำหรับบังคับขนาดก่อนถ่ายภาพ
       const printWrapper = document.createElement('div');
-      printWrapper.style.position = 'fixed';
+      
+      // ปรับเป็น absolute เพื่อให้ html2canvas จับตำแหน่งชิ้นส่วนภายในหน้าเพจได้แม่นยำขึ้น
+      printWrapper.style.position = 'absolute';
       printWrapper.style.top = '0';
       printWrapper.style.left = '0';
       printWrapper.style.width = '800px'; // บังคับความกว้างให้พอดีหน้า PDF
@@ -774,6 +776,12 @@
       printWrapper.appendChild(clone);
       document.body.appendChild(printWrapper);
 
+      // ปลดล็อค CSS ของ Body ชั่วคราว ป้องกันปัญหาถ่ายหน้าจอแล้วกลายเป็นสีขาวล้วน
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalBodyHeight = document.body.style.height;
+      document.body.style.overflow = 'visible';
+      document.body.style.height = 'auto';
+
       // ตั้งค่าการพิมพ์
       const opt = { 
         margin: [10, 10, 10, 10], // ขอบกระดาษ
@@ -783,8 +791,7 @@
           scale: 2, 
           useCORS: true,
           scrollX: 0,
-          scrollY: 0,
-          windowWidth: 800 // บังคับให้กล้องมองเห็นที่ความกว้าง 800px
+          scrollY: 0
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
@@ -792,15 +799,21 @@
       // 4. สั่งถ่ายภาพและแปลงเป็น PDF
       setTimeout(() => {
         html2pdf().set(opt).from(printWrapper).save().then(() => {
-          // ถ่ายเสร็จ ลบกรอบจำลองทิ้ง และคืนค่าฉากโหลดดิ้งเดิม
+          // ถ่ายเสร็จ ลบกรอบจำลองทิ้ง และคืนค่า Layout ของแอปฯ กลับมาเป็นปกติ
           document.body.removeChild(printWrapper);
+          document.body.style.overflow = originalBodyOverflow;
+          document.body.style.height = originalBodyHeight;
+
           loader.style.backgroundColor = originalLoaderBg; 
           hideLoader();
           showAlert('ดาวน์โหลดสถิติสำเร็จ!');
         }).catch(err => {
           console.error("PDF Export Error:", err);
-          // กรณี Error ก็ต้องเคลียร์ของทิ้งเหมือนกัน
+          // กรณี Error ก็ต้องเคลียร์ของทิ้งและคืนค่าเช่นกัน
           document.body.removeChild(printWrapper);
+          document.body.style.overflow = originalBodyOverflow;
+          document.body.style.height = originalBodyHeight;
+
           loader.style.backgroundColor = originalLoaderBg;
           hideLoader();
           showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
