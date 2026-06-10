@@ -23,9 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
   
   <style>
-    * { 
-      box-sizing: border-box; 
-    }
+    * { box-sizing: border-box; }
 
     :root { 
       --primary-color: #4a69bd; 
@@ -87,18 +85,8 @@
     .item-card img { width: 100%; height: 130px; object-fit: contain; background-color: #f9fafb; padding: 10px; }
     .item-card-content { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
     
-    /* แก้ไขส่วนนี้ ปลดล็อกให้แสดงข้อความเต็ม */
-    .item-card h3 { 
-      margin: 0 0 6px 0; 
-      font-size: 1.1em; 
-      line-height: 1.3;
-    }
-    .item-card p { 
-      margin: 0 0 12px 0; 
-      color: var(--dark-gray); 
-      font-size: 0.9em; 
-      line-height: 1.4; 
-    }
+    .item-card h3 { margin: 0 0 6px 0; font-size: 1.1em; line-height: 1.3; }
+    .item-card p { margin: 0 0 12px 0; color: var(--dark-gray); font-size: 0.9em; line-height: 1.4; }
     
     .item-card-footer { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
     .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 0.8em; font-weight: bold; display: inline-block; }
@@ -158,11 +146,7 @@
       header h1 { font-size: 1.3em; }
       nav { gap: 5px; }
       .nav-btn { font-size: 0.85em; padding: 6px 10px; }
-      #items-grid { 
-        grid-template-columns: repeat(2, 1fr) !important; 
-        gap: 10px !important; 
-      }
-      /* ปรับให้การ์ดขยายตามเนื้อหาบนมือถือ */
+      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
       .item-card h3 { font-size: 0.9em; height: auto; }
       .item-card p { font-size: 0.8em; height: auto; }
     }
@@ -321,10 +305,7 @@
     const AppDB = {
       async callAPI(action, data = {}) {
         try {
-          const response = await fetch(WEB_APP_URL, {
-            method: "POST",
-            body: JSON.stringify({ action, ...data })
-          });
+          const response = await fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action, ...data }) });
           return await response.json();
         } catch (error) {
           console.error("API Connection Error:", error);
@@ -363,23 +344,14 @@
     async function fetchAllData() {
       showLoader();
       try {
-        const [items, borrowed, stats] = await Promise.all([
-          AppDB.getItems(),
-          AppDB.getBorrowedItems(),
-          AppDB.getStats()
-        ]);
+        const [items, borrowed, stats] = await Promise.all([ AppDB.getItems(), AppDB.getBorrowedItems(), AppDB.getStats() ]);
         window.allItems = items || [];
         window.allBorrowedItems = borrowed || [];
         window.allStats = stats || {};
         
         renderedViews.clear();
-        
         const activeView = document.querySelector('.view.active');
-        if (activeView) {
-            renderViewContent(activeView.id);
-            renderedViews.add(activeView.id);
-        }
-
+        if (activeView) { renderViewContent(activeView.id); renderedViews.add(activeView.id); }
       } catch (error) {
         console.error("Error fetching data:", error);
         showAlert("ดึงข้อมูลไม่สำเร็จ กรุณารีเฟรชหน้าเว็บ", "error");
@@ -542,13 +514,9 @@
       const items = window.allItems;
       const grid = document.getElementById('items-grid'); 
       
-      if (!items || items.length === 0 || items.error) { 
-        grid.innerHTML = '<p>ไม่พบอุปกรณ์ หรือการเชื่อมต่อล้มเหลว</p>'; 
-        return; 
-      }
+      if (!items || items.length === 0 || items.error) { grid.innerHTML = '<p>ไม่พบอุปกรณ์ หรือการเชื่อมต่อล้มเหลว</p>'; return; }
       
       let htmlString = ''; 
-      
       items.forEach(item => {
         const inCart = cart.find(c => c.id == item.id);
         const currentSelectedQty = inCart ? inCart.requestQty : 1; 
@@ -576,7 +544,6 @@
             </div>
           </div>`;
       });
-      
       grid.innerHTML = htmlString;
     }
 
@@ -598,7 +565,6 @@
           cart.push({ id: id, name: name || '', maxQty: maxQty || 99, requestQty: reqQty });
       }
       updateCartUI(); 
-      
       const btn = document.getElementById('add-btn-' + id);
       if(btn) {
           const inCart = cart.findIndex(c => c.id == id) >= 0;
@@ -627,7 +593,6 @@
       let html = '';
       items.forEach(item => {
         const qty = item.borrowQty || 1; 
-        
         const originalItem = window.allItems.find(i => i.name === item.itemName);
         const isSingle = originalItem ? (originalItem.totalQuantity === 1) : (qty === 1);
 
@@ -664,45 +629,47 @@
             btn.dataset.selected = 'false'; 
             btn.className = 'btn btn-primary'; 
             btn.textContent = 'กดเลือก';
-            goodInput.readOnly = true; 
-            consumedInput.readOnly = true; 
-            goodInput.classList.remove('highlight-input'); 
-            consumedInput.classList.remove('highlight-input');
+            goodInput.readOnly = true; consumedInput.readOnly = true; 
+            goodInput.classList.remove('highlight-input'); consumedInput.classList.remove('highlight-input');
         } else {
             btn.dataset.selected = 'true'; 
             btn.className = 'btn btn-secondary selected'; 
             btn.textContent = 'เลือกแล้ว';
-            
-            if (!isSingle) {
-                goodInput.readOnly = false; 
-                consumedInput.readOnly = false;
-            } else {
-                goodInput.value = 1;
-                consumedInput.value = 0;
-            }
-            
-            goodInput.classList.add('highlight-input'); 
-            consumedInput.classList.add('highlight-input');
+            if (!isSingle) { goodInput.readOnly = false; consumedInput.readOnly = false; } 
+            else { goodInput.value = 1; consumedInput.value = 0; }
+            goodInput.classList.add('highlight-input'); consumedInput.classList.add('highlight-input');
         }
         updateReturnCount();
     }
 
     function autoCalcConsumed(id, total) { 
-      const g = document.getElementById(`ret-good-${id}`); 
-      const c = document.getElementById(`ret-consumed-${id}`); 
-      let v = parseInt(g.value) || 0; 
-      v = Math.max(0, Math.min(v, total));
-      g.value = v; 
-      c.value = total - v; 
+      const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); 
+      let v = parseInt(g.value) || 0; v = Math.max(0, Math.min(v, total)); g.value = v; c.value = total - v; 
     }
     
     function autoCalcGood(id, total) { 
-      const g = document.getElementById(`ret-good-${id}`); 
-      const c = document.getElementById(`ret-consumed-${id}`); 
-      let v = parseInt(c.value) || 0; 
-      v = Math.max(0, Math.min(v, total));
-      c.value = v; 
-      g.value = total - v; 
+      const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); 
+      let v = parseInt(c.value) || 0; v = Math.max(0, Math.min(v, total)); c.value = v; g.value = total - v; 
+    }
+
+    // 🔥 ส่วนที่แก้ไขให้ปุ่มกดได้ปกติ 🔥
+    function updateReturnCount() {
+      const selectedCount = document.querySelectorAll('.return-toggle-btn[data-selected="true"]').length;
+      const btn = document.getElementById('return-selected-btn'); 
+      
+      document.getElementById('return-count').textContent = selectedCount;
+      
+      if (selectedCount === 0) {
+        // ล็อกปุ่ม เมื่อไม่ได้เลือกของ
+        btn.disabled = true; 
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed'; // เมาส์รูปกากบาท
+      } else {
+        // ปลดล็อก เมื่อเลือกของแล้ว
+        btn.disabled = false; 
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer'; // เปลี่ยนเมาส์ให้กดได้
+      }
     }
 
     // --- Stats & History View ---
@@ -724,19 +691,9 @@
       });
 
       if(myPieChart) myPieChart.destroy(); if(myBarChart) myBarChart.destroy();
-      
-      myPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), { 
-        type: 'doughnut', 
-        data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems, stats.borrowedItems, stats.totalConsumed], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-      
+      myPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), { type: 'doughnut', data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems, stats.borrowedItems, stats.totalConsumed], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] }, options: { responsive: true, maintainAspectRatio: false } });
       const topItems = (stats.mostBorrowedItems || []).slice(0, 5);
-      myBarChart = new Chart(document.getElementById('topItemsBarChart').getContext('2d'), { 
-        type: 'bar', 
-        data: { labels: topItems.map(i => i.name), datasets: [{ label: 'จำนวนครั้งที่ถูกยืม', data: topItems.map(i => i.count), backgroundColor: '#3b82f6' }] },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
+      myBarChart = new Chart(document.getElementById('topItemsBarChart').getContext('2d'), { type: 'bar', data: { labels: topItems.map(i => i.name), datasets: [{ label: 'จำนวนครั้งที่ถูกยืม', data: topItems.map(i => i.count), backgroundColor: '#3b82f6' }] }, options: { responsive: true, maintainAspectRatio: false } });
     }
 
     function renderHistoryTable() {
@@ -751,58 +708,34 @@
       container.innerHTML = html + `</tbody></table>`;
     }
 
-    function updateReturnCount() {
-      const selectedCount = document.querySelectorAll('.return-toggle-btn[data-selected="true"]').length;
-      const btn = document.getElementById('return-selected-btn'); document.getElementById('return-count').textContent = selectedCount;
-      btn.disabled = selectedCount === 0; btn.style.opacity = selectedCount === 0 ? '0.5' : '1';
-    }
-
     // --- ฟังก์ชันดาวน์โหลด PDF ---
     function exportStatsToPDF() {
       showLoader();
-      
       const element = document.getElementById('usage-stats-container');
       const tableContainer = element.querySelector('.table-container');
       const pdfBtn = element.querySelector('button');
-      
       const originalMaxHeight = tableContainer.style.maxHeight;
       const originalOverflow = tableContainer.style.overflow;
       
       if (pdfBtn) pdfBtn.style.visibility = 'hidden';
-      
-      tableContainer.style.maxHeight = 'none';
-      tableContainer.style.overflow = 'visible';
+      tableContainer.style.maxHeight = 'none'; tableContainer.style.overflow = 'visible';
       
       const opt = { 
-        margin: [10, 10, 10, 10], 
-        filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', 
-        image: { type: 'jpeg', quality: 0.95 }, 
-        html2canvas: { 
-          scale: 1.5,
-          useCORS: true,
-          logging: false,
-          letterRendering: true,
-          scrollY: 0,
-          scrollX: 0
-        }, 
+        margin: [10, 10, 10, 10], filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', image: { type: 'jpeg', quality: 0.95 }, 
+        html2canvas: { scale: 1.5, useCORS: true, logging: false, letterRendering: true, scrollY: 0, scrollX: 0 }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
       };
 
       setTimeout(() => {
         html2pdf().set(opt).from(element).save().then(() => {
-          tableContainer.style.maxHeight = originalMaxHeight;
-          tableContainer.style.overflow = originalOverflow;
+          tableContainer.style.maxHeight = originalMaxHeight; tableContainer.style.overflow = originalOverflow;
           if (pdfBtn) pdfBtn.style.visibility = 'visible';
-          
-          hideLoader();
-          showAlert('ดาวน์โหลดสถิติสำเร็จ!');
+          hideLoader(); showAlert('ดาวน์โหลดสถิติสำเร็จ!');
         }).catch(err => {
           console.error("PDF Export Error:", err);
-          tableContainer.style.maxHeight = originalMaxHeight;
-          tableContainer.style.overflow = originalOverflow;
+          tableContainer.style.maxHeight = originalMaxHeight; tableContainer.style.overflow = originalOverflow;
           if (pdfBtn) pdfBtn.style.visibility = 'visible';
-          hideLoader();
-          showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
+          hideLoader(); showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
         });
       }, 300);
     }
@@ -828,11 +761,7 @@
         Swal.fire({ title: 'ลบอุปกรณ์?', icon: 'warning', showCancelButton: true }).then(async (r) => {
             if (r.isConfirmed) { 
               showLoader(); const res = await AppDB.deleteItem(id); hideLoader(); 
-              if(res.success) { 
-                  showAlert('ลบสำเร็จ!'); 
-                  await fetchAllData();
-                  if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
-              }
+              if(res.success) { showAlert('ลบสำเร็จ!'); await fetchAllData(); if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); } }
             }
         });
     }
@@ -840,19 +769,11 @@
     // --- QR Scanner ---
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
-      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, onScanFailure)
-      .catch(() => { showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); hideModal('qr-modal'); });
+      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, onScanFailure).catch(() => { showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); hideModal('qr-modal'); });
     }
 
     function stopScanner() { 
-      if (html5QrCode) { 
-        html5QrCode.stop()
-          .then(() => {
-            html5QrCode.clear();
-            html5QrCode = null;
-          })
-          .catch(e => console.log("Scanner stop error:", e)); 
-      } 
+      if (html5QrCode) { html5QrCode.stop().then(() => { html5QrCode.clear(); html5QrCode = null; }).catch(e => console.log("Scanner stop error:", e)); } 
       hideModal('qr-modal'); 
     }
 
@@ -860,49 +781,20 @@
       stopScanner();
       const scannedId = decodedText.trim();
       const item = window.allItems.find(i => i.id == scannedId || i.name.toLowerCase() == scannedId.toLowerCase());
-
       if (item) {
          showView('items-view');
-         const searchInput = document.getElementById('search-input');
-         searchInput.value = item.name;
-         searchInput.dispatchEvent(new Event('input'));
-
-         if (item.availableQuantity > 0) {
-             showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success');
-         } else {
-             showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning');
-         }
-      } else {
-         showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error');
-      }
+         const searchInput = document.getElementById('search-input'); searchInput.value = item.name; searchInput.dispatchEvent(new Event('input'));
+         if (item.availableQuantity > 0) { showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success'); } 
+         else { showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning'); }
+      } else { showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error'); }
     }
     
     function onScanFailure() {}
-
-    function showModal(modalId) {
-      document.getElementById(modalId).style.display = "block";
-    }
-
-    function hideModal(modalId) {
-      document.getElementById(modalId).style.display = "none";
-    }
-
-    function showLoader() {
-      document.getElementById('loader').style.display = "flex";
-    }
-
-    function hideLoader() {
-      document.getElementById('loader').style.display = "none";
-    }
-
-    function showAlert(message, icon = 'success') {
-      Swal.fire({
-        text: message,
-        icon: icon,
-        timer: 2000,
-        showConfirmButton: false
-      });
-    }
+    function showModal(modalId) { document.getElementById(modalId).style.display = "block"; }
+    function hideModal(modalId) { document.getElementById(modalId).style.display = "none"; }
+    function showLoader() { document.getElementById('loader').style.display = "flex"; }
+    function hideLoader() { document.getElementById('loader').style.display = "none"; }
+    function showAlert(message, icon = 'success') { Swal.fire({ text: message, icon: icon, timer: 2000, showConfirmButton: false }); }
   </script>
 </body>
 </html>
