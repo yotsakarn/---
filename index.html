@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
+  <meta charset="UTF-8">
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</title>
@@ -86,26 +87,17 @@
     .item-card img { width: 100%; height: 130px; object-fit: contain; background-color: #f9fafb; padding: 10px; }
     .item-card-content { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
     
+    /* แก้ไขส่วนนี้ ปลดล็อกให้แสดงข้อความเต็ม */
     .item-card h3 { 
       margin: 0 0 6px 0; 
       font-size: 1.1em; 
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden; 
       line-height: 1.3;
-      height: 2.6em; 
     }
     .item-card p { 
       margin: 0 0 12px 0; 
       color: var(--dark-gray); 
       font-size: 0.9em; 
       line-height: 1.4; 
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      height: 2.8em;
     }
     
     .item-card-footer { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
@@ -170,8 +162,9 @@
         grid-template-columns: repeat(2, 1fr) !important; 
         gap: 10px !important; 
       }
-      .item-card h3 { font-size: 0.9em; height: 2.6em; }
-      .item-card p { font-size: 0.8em; height: 2.8em; }
+      /* ปรับให้การ์ดขยายตามเนื้อหาบนมือถือ */
+      .item-card h3 { font-size: 0.9em; height: auto; }
+      .item-card p { font-size: 0.8em; height: auto; }
     }
   </style>
 </head>
@@ -544,13 +537,6 @@
       else if (viewId === 'stats-view') displayStats();
     }
 
-    // --- Helper Functions ---
-    function showLoader() { document.getElementById('loader').style.display = 'flex'; }
-    function hideLoader() { document.getElementById('loader').style.display = 'none'; }
-    function showAlert(msg, icon='success') { Swal.fire({ title: icon==='success'?'สำเร็จ!':'แจ้งเตือน!', text: msg, icon: icon }); }
-    function showModal(id) { document.getElementById(id).style.display = 'block'; }
-    function hideModal(id) { document.getElementById(id).style.display = 'none'; }
-
     // --- Items View (ยืมของ) ---
     function displayItems() {
       const items = window.allItems;
@@ -771,7 +757,7 @@
       btn.disabled = selectedCount === 0; btn.style.opacity = selectedCount === 0 ? '0.5' : '1';
     }
 
-    // --- ฟังก์ชันดาวน์โหลด PDF (เวอร์ชันแก้ไข บังคับทำงานบนวัตถุจริง ป้องกันหน้าขาว 100%) ---
+    // --- ฟังก์ชันดาวน์โหลด PDF ---
     function exportStatsToPDF() {
       showLoader();
       
@@ -892,6 +878,31 @@
     }
     
     function onScanFailure() {}
+
+    function showModal(modalId) {
+      document.getElementById(modalId).style.display = "block";
+    }
+
+    function hideModal(modalId) {
+      document.getElementById(modalId).style.display = "none";
+    }
+
+    function showLoader() {
+      document.getElementById('loader').style.display = "flex";
+    }
+
+    function hideLoader() {
+      document.getElementById('loader').style.display = "none";
+    }
+
+    function showAlert(message, icon = 'success') {
+      Swal.fire({
+        text: message,
+        icon: icon,
+        timer: 2000,
+        showConfirmButton: false
+      });
+    }
   </script>
 </body>
 </html>
