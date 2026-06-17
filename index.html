@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</title>
 
-  <!-- แท็กสำหรับเปิดโหมดแอปเต็มจอ (ซ่อนแถบเครื่องมือเบราว์เซอร์เมื่อเพิ่มไปยังหน้าจอโฮม) -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
@@ -145,7 +144,7 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
     
-    /* Responsive ปรับแต่งสำหรับมือถือให้กะทัดรัดขึ้น */
+    /* Responsive ปรับแต่งสำหรับมือถือ */
     @media (max-width: 768px) {
       body, button, input, textarea, select { font-size: 14px; }
       header { padding: 10px 0; }
@@ -153,9 +152,10 @@
       nav { gap: 4px; padding: 5px 0; }
       .nav-btn { font-size: 0.85em; padding: 6px 10px; }
       
-      .search-bar { flex-wrap: wrap; padding: 8px 0; gap: 5px; }
-      .search-bar input[type="text"] { width: 100%; flex-basis: 100%; margin-bottom: 4px; padding: 10px; }
-      .search-bar button { flex: 1; padding: 10px; font-size: 0.9em; }
+      /* บังคับให้ช่องค้นหาและปุ่มอยู่บรรทัดเดียวกันเสมอ */
+      .search-bar { flex-wrap: nowrap; padding: 8px 0; gap: 5px; align-items: center; }
+      .search-bar input[type="text"] { width: auto; flex-basis: auto; flex-grow: 1; margin-bottom: 0; padding: 8px; font-size: 14px; min-width: 0; }
+      .search-bar button { flex: none; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
 
       #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
       .item-card h3 { font-size: 0.9em; height: auto; margin-bottom: 4px; }
@@ -180,7 +180,6 @@
   <main class="container">
     <div id="items-view" class="view active">
       <div class="search-bar">
-        <!-- เพิ่มคุณสมบัติลดรูปแป้นพิมพ์มือถือ -->
         <input type="text" id="search-input" placeholder="ค้นหาชื่ออุปกรณ์ หรือรายละเอียด..." inputmode="search" enterkeyhint="search">
         <button id="scan-qr-btn" class="btn btn-secondary" style="background-color: #8b5cf6; white-space: nowrap;">📷 สแกน QR</button>
         <button id="cart-toggle-btn" class="btn btn-primary">ตะกร้า (0)</button>
@@ -793,7 +792,7 @@
     function showModal(modalId) { document.getElementById(modalId).style.display = "block"; }
     function hideModal(modalId) { document.getElementById(modalId).style.display = "none"; }
     function showLoader() { document.getElementById('loader').style.display = "flex"; }
-    function hideLoader() { document.getElementById('none'); }
+    function hideLoader() { document.getElementById('loader').style.display = "none"; }
     function showAlert(message, icon = 'success') { Swal.fire({ text: message, icon: icon, timer: 2000, showConfirmButton: false }); }
   </script>
 </body>
