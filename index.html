@@ -6,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</title>
 
+  <!-- แท็กสำหรับเปิดโหมดแอปเต็มจอ (ซ่อนแถบเครื่องมือเบราว์เซอร์เมื่อเพิ่มไปยังหน้าจอโฮม) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -175,7 +180,8 @@
   <main class="container">
     <div id="items-view" class="view active">
       <div class="search-bar">
-        <input type="text" id="search-input" placeholder="ค้นหาชื่ออุปกรณ์ หรือรายละเอียด...">
+        <!-- เพิ่มคุณสมบัติลดรูปแป้นพิมพ์มือถือ -->
+        <input type="text" id="search-input" placeholder="ค้นหาชื่ออุปกรณ์ หรือรายละเอียด..." inputmode="search" enterkeyhint="search">
         <button id="scan-qr-btn" class="btn btn-secondary" style="background-color: #8b5cf6; white-space: nowrap;">📷 สแกน QR</button>
         <button id="cart-toggle-btn" class="btn btn-primary">ตะกร้า (0)</button>
       </div>
@@ -185,7 +191,7 @@
     <div id="return-view" class="view">
       <div style="position: sticky; top: 0; background-color: var(--light-gray); z-index: 990; padding-top: 10px;">
         <div class="search-bar" style="position: static; margin-bottom: 5px; border-bottom: none; padding: 0;">
-          <input type="text" id="return-search-input" placeholder="ค้นหารายการ (ชื่อของ/ผู้ยืม)...">
+          <input type="text" id="return-search-input" placeholder="ค้นหารายการ (ชื่อของ/ผู้ยืม)..." inputmode="search" enterkeyhint="search">
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">
           <h2 style="margin: 0; font-size: 1.2em;">รายการที่รอคืน</h2>
@@ -216,7 +222,7 @@
     <div id="history-view" class="view">
       <div style="position: sticky; top: 0; background-color: var(--light-gray); z-index: 990; padding-bottom: 5px; padding-top: 10px;">
         <div class="search-bar" style="position: static; margin-bottom: 5px; border-bottom: none; padding: 0;">
-          <input type="text" id="history-search-input" placeholder="ค้นหาประวัติ...">
+          <input type="text" id="history-search-input" placeholder="ค้นหาประวัติ..." inputmode="search" enterkeyhint="search">
         </div>
         <div style="padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">
             <h2 style="margin: 0; font-size: 1.2em;">ประวัติการยืม-คืนทั้งหมด</h2>
@@ -328,13 +334,11 @@
       async getStats() { return await this.callAPI("getStats"); }
     };
 
-    // --- Global State Variables ---
     let cart = []; 
     let html5QrCode = null;
     let myPieChart = null;
     let myBarChart = null;
     
-    // In-memory Data Cache
     window.allItems = []; 
     window.allBorrowedItems = [];
     window.allStats = {};
@@ -384,7 +388,6 @@
         showModal('manage-items-modal');
       });
 
-      // --- Search Logic ---
       document.getElementById('search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll('.item-card').forEach(card => {
@@ -515,7 +518,6 @@
       else if (viewId === 'stats-view') displayStats();
     }
 
-    // --- Items View (ยืมของ) ---
     function displayItems() {
       const items = window.allItems;
       const grid = document.getElementById('items-grid'); 
@@ -585,7 +587,6 @@
       document.getElementById('cart-toggle-btn').textContent = `ตะกร้า (${cart.length})`; document.getElementById('borrow-btn').disabled = cart.length === 0;
     }
 
-    // --- Return View (คืนของ) ---
     function renderReturnTable() {
       const items = window.allBorrowedItems;
       const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
@@ -675,7 +676,6 @@
       }
     }
 
-    // --- Stats & History View ---
     function displayStats() {
       const stats = window.allStats;
       if(!stats || stats.error || !stats.itemUsageStats) { return; }
@@ -711,7 +711,6 @@
       container.innerHTML = html + `</tbody></table>`;
     }
 
-    // --- ฟังก์ชันดาวน์โหลด PDF ---
     function exportStatsToPDF() {
       showLoader();
       const element = document.getElementById('usage-stats-container');
@@ -743,7 +742,6 @@
       }, 300);
     }
 
-    // --- Admin Manage Items ---
     function renderManageItemsTable() {
          const container = document.getElementById('manage-items-table-container');
          let html = `<table><thead><tr><th>รูป</th><th>ชื่ออุปกรณ์</th><th>สต็อกเริ่ม</th><th>พร้อมยืม</th><th>จัดการ</th></tr></thead><tbody>`;
@@ -769,7 +767,6 @@
         });
     }
 
-    // --- QR Scanner ---
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
       html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, onScanFailure).catch(() => { showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); hideModal('qr-modal'); });
@@ -796,7 +793,7 @@
     function showModal(modalId) { document.getElementById(modalId).style.display = "block"; }
     function hideModal(modalId) { document.getElementById(modalId).style.display = "none"; }
     function showLoader() { document.getElementById('loader').style.display = "flex"; }
-    function hideLoader() { document.getElementById('loader').style.display = "none"; }
+    function hideLoader() { document.getElementById('none'); }
     function showAlert(message, icon = 'success') { Swal.fire({ text: message, icon: icon, timer: 2000, showConfirmButton: false }); }
   </script>
 </body>
