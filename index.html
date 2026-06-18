@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <base target="_top">
-  <!-- ล็อคหน้าจอไม่ให้ซูมเด็ดขาด -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</title>
 
@@ -138,7 +137,7 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
     
-    /* Responsive ปรับแต่งสำหรับมือถือ */
+    /* Responsive ปรับแต่งสำหรับมือถือ (อัปเดตให้กะทัดรัดยิ่งขึ้น) */
     @media (max-width: 768px) {
       body, button, textarea, select { font-size: 14px; }
       
@@ -152,18 +151,35 @@
       nav { gap: 4px; padding: 5px 0; }
       .nav-btn { font-size: 0.85em; padding: 6px 10px; }
       
-      /* บังคับให้ช่องค้นหาและปุ่มอยู่บรรทัดเดียวกันเสมอ */
       .search-bar { flex-wrap: nowrap; padding: 8px 0; gap: 5px; align-items: center; }
       .search-bar input[type="text"] { width: auto; flex-basis: auto; flex-grow: 1; margin-bottom: 0; padding: 8px; min-width: 0; }
       .search-bar button { flex: none; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
 
-      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+      /* ปรับระยะห่าง Grid และเนื้อหาในการ์ดให้เล็กลง */
+      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
+      .item-card-content { padding: 8px !important; }
       
-      /* [ส่วนที่อัปเดตใหม่] ปรับขนาดรูปภาพในมือถือให้เล็กลง */
-      .item-card img { height: 90px; padding: 5px; }
+      /* ปรับขนาดรูปภาพในมือถือให้เล็กลงมาก */
+      .item-card img { height: 70px !important; padding: 4px !important; }
       
-      .item-card h3 { font-size: 0.9em; height: auto; margin-bottom: 4px; }
-      .item-card p { font-size: 0.8em; height: auto; margin-bottom: 8px; }
+      /* ปรับตัวอักษรให้พอดีกับกรอบที่เล็กลง */
+      .item-card h3 { font-size: 0.85em !important; height: auto; margin-bottom: 2px !important; }
+      .item-card p { font-size: 0.75em !important; height: auto; margin-bottom: 6px !important; line-height: 1.2; }
+      
+      /* จัดการช่องระบุจำนวน และปุ่มใส่ตะกร้าให้กะทัดรัดสุดๆ */
+      .item-card-footer { gap: 4px !important; }
+      .status-badge { font-size: 0.75em !important; padding: 2px 6px !important; }
+      
+      .item-card-footer label { font-size: 0.75em !important; }
+      .item-card-footer input[type="number"] { 
+         width: 38px !important; 
+         padding: 2px !important; 
+         height: 26px !important; 
+      }
+      .item-card-footer .btn { 
+         padding: 4px 6px !important; 
+         font-size: 0.8em !important; 
+      }
       
       /* เพิ่มพื้นที่ว่างด้านล่าง กันไม่ให้คีย์บอร์ดบังช่องกรอกตัวเลข */
       main.container { 
