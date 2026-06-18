@@ -20,7 +20,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
   
   <style>
-    * { box-sizing: border-box; }
+    /* เพิ่ม touch-action: manipulation; เพื่อป้องกันการซูมแบบ Double-tap */
+    * { box-sizing: border-box; touch-action: manipulation; }
 
     :root { 
       --primary-color: #4a69bd; 
@@ -401,13 +402,7 @@
       views = document.querySelectorAll('.view');
       navButtons = document.querySelectorAll('.nav-btn');
       
-      document.querySelector('main.container').addEventListener('focusin', function(e) {
-        if (e.target.tagName === 'INPUT' && (e.target.type === 'number' || e.target.type === 'text')) {
-          setTimeout(() => {
-            e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          }, 350); 
-        }
-      });
+      // เอาโค้ด scrollIntoView ออกแล้วตามที่ขอครับ
 
       document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
         btn.addEventListener('click', () => { showView(btn.dataset.view); });
