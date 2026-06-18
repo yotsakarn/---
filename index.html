@@ -10,13 +10,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
 
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-XXXXXXXXXX');
-  </script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -144,9 +137,15 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
     
-    /* Responsive ปรับแต่งสำหรับมือถือ */
+    /* Responsive ปรับแต่งสำหรับมือถือ พร้อมแก้ปัญหาซูมและหน้าจอเด้ง */
     @media (max-width: 768px) {
-      body, button, input, textarea, select { font-size: 14px; }
+      body, button, textarea, select { font-size: 14px; }
+      
+      /* บังคับ input ให้เป็น 16px เสมอ เพื่อป้องกันมือถือ (iOS) ซูมหน้าจอ */
+      input[type="number"], input[type="text"], input[type="date"], .qty-input-group input { 
+        font-size: 16px !important; 
+      }
+
       header { padding: 10px 0; }
       header h1 { font-size: 1.1em; padding: 0 10px; line-height: 1.3; }
       nav { gap: 4px; padding: 5px 0; }
@@ -154,17 +153,17 @@
       
       /* บังคับให้ช่องค้นหาและปุ่มอยู่บรรทัดเดียวกันเสมอ */
       .search-bar { flex-wrap: nowrap; padding: 8px 0; gap: 5px; align-items: center; }
-      .search-bar input[type="text"] { width: auto; flex-basis: auto; flex-grow: 1; margin-bottom: 0; padding: 8px; font-size: 14px; min-width: 0; }
+      .search-bar input[type="text"] { width: auto; flex-basis: auto; flex-grow: 1; margin-bottom: 0; padding: 8px; min-width: 0; }
       .search-bar button { flex: none; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
 
       #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
       .item-card h3 { font-size: 0.9em; height: auto; margin-bottom: 4px; }
       .item-card p { font-size: 0.8em; height: auto; margin-bottom: 8px; }
       
-      /* แก้ไขปัญหามือถือ: เพิ่มพื้นที่ว่างด้านล่าง กันไม่ให้คีย์บอร์ดบังช่องกรอกตัวเลข */
+      /* เพิ่มพื้นที่ว่างด้านล่าง กันไม่ให้คีย์บอร์ดบังช่องกรอกตัวเลข */
       main.container { 
-         padding-bottom: 50vh !important; 
-         scroll-padding-top: 130px; 
+         padding-bottom: 45vh !important; 
+         scroll-padding-top: 100px; 
       }
     }
   </style>
@@ -317,6 +316,7 @@
   </div>
 
   <script>
+    // *อย่าลืมเช็คและอัปเดต Web App URL ของคุณถ้ามีการทำ Deploy ใหม่นะครับ*
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzNp3PG-2gADMw5WfFcwrQ0vAcwjnoBR4pzSwTBWrzZ8sgXz_m5f23T5oA-DhWVzRuwpA/exec";
 
     const AppDB = {
@@ -380,12 +380,12 @@
       views = document.querySelectorAll('.view');
       navButtons = document.querySelectorAll('.nav-btn');
       
-      // [แก้ไขปัญหามือถือ] จัดการเรื่องหน้าจอเด้งเวลาพิมพ์ในช่องตัวเลข
+      // การแก้ปัญหามือถือ: เปลี่ยนเป็นการเลื่อนแบบ block: 'nearest' ไม่ดึงจอกระชาก
       document.querySelector('main.container').addEventListener('focusin', function(e) {
-        if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
+        if (e.target.tagName === 'INPUT' && (e.target.type === 'number' || e.target.type === 'text')) {
           setTimeout(() => {
-            e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 300); 
+            e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 350); 
         }
       });
 
