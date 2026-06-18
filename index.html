@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <base target="_top">
-  <!-- ล็อกพิกัดและการซูมหน้าจอ -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</title>
 
@@ -153,35 +152,47 @@
       body, button, textarea, select, input { font-size: 16px !important; }
       
       header { padding: 10px 0; }
-      header h1 { font-size: 1.1em; padding: 0 10px; line-height: 1.3; }
+      /* ปรับหัวข้อให้เล็กลงตามที่ต้องการ */
+      header h1 { font-size: 0.9em; padding: 0 10px; line-height: 1.3; } 
+      
       nav { gap: 4px; padding: 5px 0; }
-      .nav-btn { font-size: 0.85em; padding: 6px 10px; }
+      .nav-btn { font-size: 0.95em; padding: 6px 10px; }
       
       .search-bar { flex-wrap: nowrap; padding: 8px 0; gap: 5px; align-items: center; }
       .search-bar input[type="text"] { width: auto; flex-basis: auto; flex-grow: 1; margin-bottom: 0; padding: 8px; min-width: 0; }
-      .search-bar button { flex: none; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
+      .search-bar button { flex: none; padding: 8px 10px; font-size: 14px; white-space: nowrap; }
 
-      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
-      .item-card-content { padding: 8px !important; }
-      .item-card img { height: 70px !important; padding: 4px !important; }
-      .item-card h3 { font-size: 0.85em !important; height: auto; margin-bottom: 2px !important; }
-      .item-card p { font-size: 0.75em !important; height: auto; margin-bottom: 6px !important; line-height: 1.2; }
+      /* จัดช่องว่างระหว่างการ์ดให้เพิ่มขึ้นนิดหน่อย */
+      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
       
-      .item-card-footer { gap: 4px !important; }
-      .status-badge { font-size: 0.75em !important; padding: 2px 6px !important; }
-      .item-card-footer label { font-size: 0.75em !important; }
+      .item-card-content { padding: 10px !important; }
+      
+      /* ปรับรูปภาพให้ใหญ่ขึ้นมาก */
+      .item-card img { height: 110px !important; padding: 4px !important; } 
+      
+      /* ปรับขนาดตัวอักษรชื่อและรายละเอียดให้ใหญ่และอ่านง่ายขึ้น */
+      .item-card h3 { font-size: 1.05em !important; height: auto; margin-bottom: 4px !important; }
+      .item-card p { font-size: 0.9em !important; height: auto; margin-bottom: 8px !important; line-height: 1.3; }
+      
+      .item-card-footer { gap: 6px !important; }
+      .status-badge { font-size: 0.85em !important; padding: 3px 8px !important; }
+      .item-card-footer label { font-size: 0.85em !important; }
+      
+      /* ขยายช่องใส่จำนวนตัวเลข */
       .item-card-footer input[type="number"] { 
-         width: 38px !important; 
-         padding: 2px !important; 
-         height: 26px !important; 
+         width: 45px !important; 
+         padding: 4px !important; 
+         height: 30px !important; 
       }
+      
+      /* ปรับขนาดปุ่มกดให้ใหญ่ขึ้น สัมผัสง่ายขึ้น */
       .item-card-footer .btn { 
-         padding: 4px 6px !important; 
-         font-size: 0.8em !important; 
+         padding: 6px 8px !important; 
+         font-size: 0.95em !important; 
       }
       
       main.container { 
-         padding-bottom: 50vh !important; /* เพิ่มระยะเว้นว่างด้านล่างให้เพียงพอตอนคีย์บอร์ดเด้ง */
+         padding-bottom: 50vh !important; 
       }
     }
   </style>
@@ -399,7 +410,7 @@
       views = document.querySelectorAll('.view');
       navButtons = document.querySelectorAll('.nav-btn');
       
-      // -- ส่วนที่เพิ่มใหม่: จัดการให้ช่องกรอกข้อมูลเลื่อนมาอยู่ตรงกลางเมื่อคีย์บอร์ดเด้ง --
+      // -- ส่วนที่จัดการให้ช่องกรอกข้อมูลเลื่อนมาอยู่ตรงกลางเมื่อคีย์บอร์ดเด้ง --
       document.addEventListener('focusin', function(e) {
         if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
           // หน่วงเวลา 300ms เพื่อรอให้คีย์บอร์ดมือถือสไลด์ขึ้นมาจนสุดก่อนทำการเลื่อนจอ
