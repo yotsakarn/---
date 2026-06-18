@@ -160,6 +160,12 @@
       #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
       .item-card h3 { font-size: 0.9em; height: auto; margin-bottom: 4px; }
       .item-card p { font-size: 0.8em; height: auto; margin-bottom: 8px; }
+      
+      /* แก้ไขปัญหามือถือ: เพิ่มพื้นที่ว่างด้านล่าง กันไม่ให้คีย์บอร์ดบังช่องกรอกตัวเลข */
+      main.container { 
+         padding-bottom: 50vh !important; 
+         scroll-padding-top: 130px; 
+      }
     }
   </style>
 </head>
@@ -374,6 +380,15 @@
       views = document.querySelectorAll('.view');
       navButtons = document.querySelectorAll('.nav-btn');
       
+      // [แก้ไขปัญหามือถือ] จัดการเรื่องหน้าจอเด้งเวลาพิมพ์ในช่องตัวเลข
+      document.querySelector('main.container').addEventListener('focusin', function(e) {
+        if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
+          setTimeout(() => {
+            e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300); 
+        }
+      });
+
       document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
         btn.addEventListener('click', () => { showView(btn.dataset.view); });
       });
