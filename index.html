@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <base target="_top">
+  <!-- ล็อคหน้าจอไม่ให้ซูมเด็ดขาด -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</title>
 
@@ -137,7 +138,7 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
     
-    /* Responsive ปรับแต่งสำหรับมือถือ พร้อมแก้ปัญหาซูมและหน้าจอเด้ง */
+    /* Responsive ปรับแต่งสำหรับมือถือ */
     @media (max-width: 768px) {
       body, button, textarea, select { font-size: 14px; }
       
@@ -157,6 +158,10 @@
       .search-bar button { flex: none; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
 
       #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+      
+      /* [ส่วนที่อัปเดตใหม่] ปรับขนาดรูปภาพในมือถือให้เล็กลง */
+      .item-card img { height: 90px; padding: 5px; }
+      
       .item-card h3 { font-size: 0.9em; height: auto; margin-bottom: 4px; }
       .item-card p { font-size: 0.8em; height: auto; margin-bottom: 8px; }
       
@@ -380,7 +385,6 @@
       views = document.querySelectorAll('.view');
       navButtons = document.querySelectorAll('.nav-btn');
       
-      // การแก้ปัญหามือถือ: เปลี่ยนเป็นการเลื่อนแบบ block: 'nearest' ไม่ดึงจอกระชาก
       document.querySelector('main.container').addEventListener('focusin', function(e) {
         if (e.target.tagName === 'INPUT' && (e.target.type === 'number' || e.target.type === 'text')) {
           setTimeout(() => {
