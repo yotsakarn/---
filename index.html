@@ -35,7 +35,6 @@
       --warning: #f59e0b; 
     }
     
-    /* เทคนิคล็อกหน้าจอไม่ให้กระดอนเวลาคีย์บอร์ดเด้ง */
     html, body { 
       position: fixed; 
       width: 100%; 
@@ -48,7 +47,7 @@
     
     body, button, input, textarea, select { 
       font-family: 'Prompt', sans-serif; 
-      font-size: 16px; /* บังคับ 16px เพื่อกัน iOS ซูม */
+      font-size: 16px; 
       color: var(--text-color);
     }
 
@@ -150,7 +149,6 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
     
-    /* Responsive ปรับแต่งสำหรับมือถือให้หน้าจอไม่กระดอน */
     @media (max-width: 768px) {
       body, button, textarea, select, input { font-size: 16px !important; }
       
@@ -183,7 +181,7 @@
       }
       
       main.container { 
-         padding-bottom: 40vh !important; /* เว้นที่ว่างให้คีย์บอร์ด */
+         padding-bottom: 50vh !important; /* เพิ่มระยะเว้นว่างด้านล่างให้เพียงพอตอนคีย์บอร์ดเด้ง */
       }
     }
   </style>
@@ -401,6 +399,17 @@
       views = document.querySelectorAll('.view');
       navButtons = document.querySelectorAll('.nav-btn');
       
+      // -- ส่วนที่เพิ่มใหม่: จัดการให้ช่องกรอกข้อมูลเลื่อนมาอยู่ตรงกลางเมื่อคีย์บอร์ดเด้ง --
+      document.addEventListener('focusin', function(e) {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+          // หน่วงเวลา 300ms เพื่อรอให้คีย์บอร์ดมือถือสไลด์ขึ้นมาจนสุดก่อนทำการเลื่อนจอ
+          setTimeout(() => {
+            e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
+        }
+      });
+      // -------------------------------------------------------------
+
       document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
         btn.addEventListener('click', () => { showView(btn.dataset.view); });
       });
