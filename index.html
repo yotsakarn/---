@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- อัปเดต Meta Viewport เพื่อจัดการพื้นที่คีย์บอร์ดให้สมูทขึ้น -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
   <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์สาขาวิชาการพยาบาลสุขภาพชุมชน</title>
 
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -44,8 +45,13 @@
     
     body, button, input, textarea, select { font-family: 'Prompt', sans-serif; margin: 0; font-size: 18px; }
     
-    body { 
+    /* บังคับให้ html มีสีเดียวกับเว็บ เพื่อเวลามือถือดึงแป้นพิมพ์ลง จะได้ไม่เห็นแถบสีขาวโหว่ */
+    html, body {
       background-color: var(--light-gray); 
+      overscroll-behavior: none; /* ป้องกันอาการหน้าจอกระตุกหรือเด้งเวลาย่อ/ขยายแป้นพิมพ์ */
+    }
+
+    body { 
       color: var(--text-color); 
       display: flex; 
       flex-direction: column; 
