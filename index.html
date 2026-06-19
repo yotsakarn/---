@@ -27,7 +27,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
   
   <style>
-    /* เพิ่ม touch-action: manipulation เพื่อลดดีเลย์ 300ms ของระบบมือถือ */
     * { box-sizing: border-box; touch-action: manipulation; }
 
     :root { 
@@ -145,7 +144,6 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
     
-    /* Responsive ปรับแต่งสำหรับมือถือ */
     @media (max-width: 768px) {
       body, button, input, textarea, select { font-size: 14px; }
       header { padding: 10px 0; }
@@ -153,7 +151,6 @@
       nav { gap: 4px; padding: 5px 0; }
       .nav-btn { font-size: 0.85em; padding: 6px 10px; }
       
-      /* บังคับให้ช่องค้นหาและปุ่มอยู่บรรทัดเดียวกันเสมอ */
       .search-bar { flex-wrap: nowrap; padding: 8px 0; gap: 5px; align-items: center; }
       .search-bar input[type="text"] { width: auto; flex-basis: auto; flex-grow: 1; margin-bottom: 0; padding: 8px; font-size: 14px; min-width: 0; }
       .search-bar button { flex: none; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
@@ -402,15 +399,7 @@
         }
       });
 
-      // ปิดแป้นพิมพ์ทันที เมื่อผู้ใช้เอานิ้วไถเพื่อเลื่อนดูรายการ (Scroll)
-      document.querySelector('main.container').addEventListener('touchmove', function() {
-        const activeEl = document.activeElement;
-        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-          activeEl.blur(); // หุบแป้นพิมพ์ทันทีเมื่อเริ่มไถหน้าจอ
-        }
-      }, { passive: true });
-
-      // --- เริ่มโค้ดที่เพิ่มใหม่: เลื่อนหน้าจอให้ช่องกรอกอยู่ตรงกลางเพื่อไม่ให้คีย์บอร์ดบัง ---
+      // --- เลื่อนหน้าจอให้ช่องกรอกอยู่ตรงกลางเพื่อไม่ให้คีย์บอร์ดบัง ---
       document.addEventListener('focusin', function(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
           // หน่วงเวลา 300ms รอให้แป้นพิมพ์เด้งขึ้นมาให้เสร็จก่อน แล้วค่อยเลื่อน
@@ -419,7 +408,6 @@
           }, 300);
         }
       });
-      // --- จบโค้ดที่เพิ่มใหม่ ---
 
       document.getElementById('search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
