@@ -687,11 +687,7 @@
           if (!isSingle) { 
             goodInput.readOnly = false; 
             consumedInput.readOnly = false; 
-            
-            setTimeout(() => {
-              goodInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
-
+            // เอา setTimeout และ scrollIntoView() ออกแล้ว เพื่อป้องกันหน้าจอกระโดดเลื่อนหายขึ้นไปข้างบน
           } else { 
             goodInput.value = 1; 
             consumedInput.value = 0; 
