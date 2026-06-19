@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</title>
+  <title>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์สาขาวิชาการพยาบาลสุขภาพชุมชน</title>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
 
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
   <script>
@@ -23,7 +27,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
   
   <style>
-    * { box-sizing: border-box; }
+    /* เพิ่ม touch-action: manipulation เพื่อลดดีเลย์ 300ms ของระบบมือถือ */
+    * { box-sizing: border-box; touch-action: manipulation; }
 
     :root { 
       --primary-color: #4a69bd; 
@@ -140,15 +145,22 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
     
-    /* Responsive */
+    /* Responsive ปรับแต่งสำหรับมือถือ */
     @media (max-width: 768px) {
-      body, button, input, textarea, select { font-size: 16px; }
-      header h1 { font-size: 1.3em; }
-      nav { gap: 5px; }
+      body, button, input, textarea, select { font-size: 14px; }
+      header { padding: 10px 0; }
+      header h1 { font-size: 1.1em; padding: 0 10px; line-height: 1.3; }
+      nav { gap: 4px; padding: 5px 0; }
       .nav-btn { font-size: 0.85em; padding: 6px 10px; }
-      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
-      .item-card h3 { font-size: 0.9em; height: auto; }
-      .item-card p { font-size: 0.8em; height: auto; }
+      
+      /* บังคับให้ช่องค้นหาและปุ่มอยู่บรรทัดเดียวกันเสมอ */
+      .search-bar { flex-wrap: nowrap; padding: 8px 0; gap: 5px; align-items: center; }
+      .search-bar input[type="text"] { width: auto; flex-basis: auto; flex-grow: 1; margin-bottom: 0; padding: 8px; font-size: 14px; min-width: 0; }
+      .search-bar button { flex: none; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
+
+      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+      .item-card h3 { font-size: 0.9em; height: auto; margin-bottom: 4px; }
+      .item-card p { font-size: 0.8em; height: auto; margin-bottom: 8px; }
     }
   </style>
 </head>
@@ -156,7 +168,7 @@
   <div id="loader" style="display: none;"><div class="spinner"></div></div>
   
   <div class="sticky-header">
-    <header><h1>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์ทางการแพทย์ สาขาชุมชน</h1></header>
+    <header><h1>ระบบยืม-คืนอุปกรณ์และเวชภัณฑ์สาขาวิชาการพยาบาลสุขภาพชุมชน</h1></header>
     <nav>
       <button class="nav-btn active" data-view="items-view">ยืมของ</button>
       <button class="nav-btn" data-view="return-view">คืนของ</button>
@@ -169,7 +181,7 @@
   <main class="container">
     <div id="items-view" class="view active">
       <div class="search-bar">
-        <input type="text" id="search-input" placeholder="ค้นหาชื่ออุปกรณ์ หรือรายละเอียด...">
+        <input type="text" id="search-input" placeholder="ค้นหาชื่ออุปกรณ์ หรือรายละเอียด..." inputmode="search" enterkeyhint="search">
         <button id="scan-qr-btn" class="btn btn-secondary" style="background-color: #8b5cf6; white-space: nowrap;">📷 สแกน QR</button>
         <button id="cart-toggle-btn" class="btn btn-primary">ตะกร้า (0)</button>
       </div>
@@ -179,7 +191,7 @@
     <div id="return-view" class="view">
       <div style="position: sticky; top: 0; background-color: var(--light-gray); z-index: 990; padding-top: 10px;">
         <div class="search-bar" style="position: static; margin-bottom: 5px; border-bottom: none; padding: 0;">
-          <input type="text" id="return-search-input" placeholder="ค้นหารายการ (ชื่อของ/ผู้ยืม)...">
+          <input type="text" id="return-search-input" placeholder="ค้นหารายการ (ชื่อของ/ผู้ยืม)..." inputmode="search" enterkeyhint="search">
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">
           <h2 style="margin: 0; font-size: 1.2em;">รายการที่รอคืน</h2>
@@ -210,7 +222,7 @@
     <div id="history-view" class="view">
       <div style="position: sticky; top: 0; background-color: var(--light-gray); z-index: 990; padding-bottom: 5px; padding-top: 10px;">
         <div class="search-bar" style="position: static; margin-bottom: 5px; border-bottom: none; padding: 0;">
-          <input type="text" id="history-search-input" placeholder="ค้นหาประวัติ...">
+          <input type="text" id="history-search-input" placeholder="ค้นหาประวัติ..." inputmode="search" enterkeyhint="search">
         </div>
         <div style="padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">
             <h2 style="margin: 0; font-size: 1.2em;">ประวัติการยืม-คืนทั้งหมด</h2>
@@ -322,13 +334,11 @@
       async getStats() { return await this.callAPI("getStats"); }
     };
 
-    // --- Global State Variables ---
     let cart = []; 
     let html5QrCode = null;
     let myPieChart = null;
     let myBarChart = null;
     
-    // In-memory Data Cache
     window.allItems = []; 
     window.allBorrowedItems = [];
     window.allStats = {};
@@ -378,7 +388,28 @@
         showModal('manage-items-modal');
       });
 
-      // --- Search Logic ---
+      // ปิดแป้นพิมพ์ทันทีเมื่อกด Enter หรือ ตกลง ในช่องค้นหา
+      const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input'];
+      allSearchInputs.forEach(id => {
+        const inputBox = document.getElementById(id);
+        if (inputBox) {
+          inputBox.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              this.blur(); // คำสั่ง blur() จะเป็นการเอา Cursor ออก ทำให้คีย์บอร์ดหุบทันที
+            }
+          });
+        }
+      });
+
+      // ปิดแป้นพิมพ์ทันที เมื่อผู้ใช้เอานิ้วไถเพื่อเลื่อนดูรายการ (Scroll)
+      document.querySelector('main.container').addEventListener('touchmove', function() {
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+          activeEl.blur(); // หุบแป้นพิมพ์ทันทีเมื่อเริ่มไถหน้าจอ
+        }
+      }, { passive: true });
+
       document.getElementById('search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll('.item-card').forEach(card => {
@@ -509,7 +540,6 @@
       else if (viewId === 'stats-view') displayStats();
     }
 
-    // --- Items View (ยืมของ) ---
     function displayItems() {
       const items = window.allItems;
       const grid = document.getElementById('items-grid'); 
@@ -568,7 +598,7 @@
       const btn = document.getElementById('add-btn-' + id);
       if(btn) {
           const inCart = cart.findIndex(c => c.id == id) >= 0;
-          btn.className = inCart ? 'btn btn-secondary selected' : 'btn-primary';
+          btn.className = inCart ? 'btn btn-secondary selected' : 'btn btn-primary';
           btn.textContent = inCart ? 'เอาออก' : 'ใส่ตะกร้า';
       }
     }
@@ -579,7 +609,6 @@
       document.getElementById('cart-toggle-btn').textContent = `ตะกร้า (${cart.length})`; document.getElementById('borrow-btn').disabled = cart.length === 0;
     }
 
-    // --- Return View (คืนของ) ---
     function renderReturnTable() {
       const items = window.allBorrowedItems;
       const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
@@ -617,7 +646,6 @@
       updateReturnCount();
     }
 
-    // 🔥 โค้ดที่ได้รับการแก้ไขแล้ว 🔥
     function toggleReturnBtn(btn) {
         const id = btn.dataset.id; 
         const isSelected = btn.dataset.selected === 'true';
@@ -670,7 +698,6 @@
       }
     }
 
-    // --- Stats & History View ---
     function displayStats() {
       const stats = window.allStats;
       if(!stats || stats.error || !stats.itemUsageStats) { return; }
@@ -706,7 +733,6 @@
       container.innerHTML = html + `</tbody></table>`;
     }
 
-    // --- ฟังก์ชันดาวน์โหลด PDF ---
     function exportStatsToPDF() {
       showLoader();
       const element = document.getElementById('usage-stats-container');
@@ -738,7 +764,6 @@
       }, 300);
     }
 
-    // --- Admin Manage Items ---
     function renderManageItemsTable() {
          const container = document.getElementById('manage-items-table-container');
          let html = `<table><thead><tr><th>รูป</th><th>ชื่ออุปกรณ์</th><th>สต็อกเริ่ม</th><th>พร้อมยืม</th><th>จัดการ</th></tr></thead><tbody>`;
@@ -764,7 +789,6 @@
         });
     }
 
-    // --- QR Scanner ---
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
       html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, onScanFailure).catch(() => { showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); hideModal('qr-modal'); });
