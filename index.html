@@ -385,7 +385,6 @@
         showModal('manage-items-modal');
       });
 
-      // ปิดแป้นพิมพ์ทันทีเมื่อกด Enter หรือ ตกลง ในช่องค้นหา
       const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input'];
       allSearchInputs.forEach(id => {
         const inputBox = document.getElementById(id);
@@ -393,7 +392,7 @@
           inputBox.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
               e.preventDefault();
-              this.blur(); // คำสั่ง blur() จะเป็นการเอา Cursor ออก ทำให้คีย์บอร์ดหุบทันที
+              this.blur();
             }
           });
         }
@@ -431,9 +430,15 @@
         document.getElementById('return-date').setAttribute('min', now.toISOString().split('T')[0]); showModal('borrow-modal');
       });
 
+      // --- ส่วนที่มีการเพิ่มฟิลด์ borrowDate เพื่อส่งเวลาไปหลังบ้าน ---
       document.getElementById('borrow-form').addEventListener('submit', async (e) => {
         e.preventDefault(); showLoader();
-        const payload = { borrowerName: document.getElementById('borrower-name').value, returnDate: document.getElementById('return-date').value, items: cart.map(c => ({ id: c.id, qty: c.requestQty })) };
+        const payload = { 
+          borrowerName: document.getElementById('borrower-name').value, 
+          borrowDate: document.getElementById('borrow-date-display').value, // เพิ่มบรรทัดนี้
+          returnDate: document.getElementById('return-date').value, 
+          items: cart.map(c => ({ id: c.id, qty: c.requestQty })) 
+        };
         const res = await AppDB.processBorrow(payload);
         hideLoader(); 
         if(res.success) { 
@@ -445,11 +450,13 @@
         } else { showAlert(res.error, 'error'); }
       });
 
+      // --- ส่วนที่มีการเพิ่มฟิลด์ returnDate เพื่อส่งเวลาคืนไปหลังบ้าน ---
       document.getElementById('return-selected-btn').addEventListener('click', () => {
         const selectedBtns = document.querySelectorAll('.return-toggle-btn[data-selected="true"]'); if(selectedBtns.length === 0) return;
         Swal.fire({ title: 'ระบุชื่อ-นามสกุลผู้คืน', input: 'text', showCancelButton: true, confirmButtonText: 'ยืนยันคืน', inputValidator: (v) => { if (!v) return 'กรุณาระบุชื่อ!' } }).then(async (result) => {
           if (result.isConfirmed) {
-            const returnPayload = { returnerName: result.value, items: [] };
+            const now = new Date().toLocaleString('th-TH'); // เพิ่มเวลาปัจจุบัน
+            const returnPayload = { returnerName: result.value, returnDate: now, items: [] }; // นำเวลามายัดใส่ payload
             selectedBtns.forEach(btn => { 
               const id = btn.dataset.id; 
               returnPayload.items.push({ 
