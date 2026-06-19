@@ -158,6 +158,27 @@
       #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
       .item-card h3 { font-size: 0.9em; height: auto; margin-bottom: 4px; }
       .item-card p { font-size: 0.8em; height: auto; margin-bottom: 8px; }
+
+      /* การปรับแต่งส่วนจัดการคืนของในมือถือ */
+      #return-view table th:first-child,
+      #return-view table td:first-child {
+        width: 60px !important;
+        padding: 4px !important;
+      }
+      .return-toggle-btn {
+        font-size: 11px !important;
+        padding: 4px 6px !important;
+        white-space: nowrap;
+      }
+      #return-view table th, 
+      #return-view table td {
+        font-size: 13px !important;
+        padding: 6px 4px !important;
+      }
+      .qty-input-group input {
+        width: 40px !important;
+        font-size: 13px !important;
+      }
     }
   </style>
 </head>
@@ -430,12 +451,11 @@
         document.getElementById('return-date').setAttribute('min', now.toISOString().split('T')[0]); showModal('borrow-modal');
       });
 
-      // --- ส่วนที่มีการเพิ่มฟิลด์ borrowDate เพื่อส่งเวลาไปหลังบ้าน ---
       document.getElementById('borrow-form').addEventListener('submit', async (e) => {
         e.preventDefault(); showLoader();
         const payload = { 
           borrowerName: document.getElementById('borrower-name').value, 
-          borrowDate: document.getElementById('borrow-date-display').value, // เพิ่มบรรทัดนี้
+          borrowDate: document.getElementById('borrow-date-display').value,
           returnDate: document.getElementById('return-date').value, 
           items: cart.map(c => ({ id: c.id, qty: c.requestQty })) 
         };
@@ -450,13 +470,12 @@
         } else { showAlert(res.error, 'error'); }
       });
 
-      // --- ส่วนที่มีการเพิ่มฟิลด์ returnDate เพื่อส่งเวลาคืนไปหลังบ้าน ---
       document.getElementById('return-selected-btn').addEventListener('click', () => {
         const selectedBtns = document.querySelectorAll('.return-toggle-btn[data-selected="true"]'); if(selectedBtns.length === 0) return;
         Swal.fire({ title: 'ระบุชื่อ-นามสกุลผู้คืน', input: 'text', showCancelButton: true, confirmButtonText: 'ยืนยันคืน', inputValidator: (v) => { if (!v) return 'กรุณาระบุชื่อ!' } }).then(async (result) => {
           if (result.isConfirmed) {
-            const now = new Date().toLocaleString('th-TH'); // เพิ่มเวลาปัจจุบัน
-            const returnPayload = { returnerName: result.value, returnDate: now, items: [] }; // นำเวลามายัดใส่ payload
+            const now = new Date().toLocaleString('th-TH');
+            const returnPayload = { returnerName: result.value, returnDate: now, items: [] };
             selectedBtns.forEach(btn => { 
               const id = btn.dataset.id; 
               returnPayload.items.push({ 
@@ -643,28 +662,40 @@
     }
 
     function toggleReturnBtn(btn) {
-        const id = btn.dataset.id; 
-        const isSelected = btn.dataset.selected === 'true';
-        const isSingle = btn.dataset.single === 'true';
-        
-        const goodInput = document.getElementById(`ret-good-${id}`); 
-        const consumedInput = document.getElementById(`ret-consumed-${id}`);
-        
-        if (isSelected) {
-            btn.dataset.selected = 'false'; 
-            btn.className = 'btn btn-primary return-toggle-btn'; 
-            btn.textContent = 'กดเลือก';
-            goodInput.readOnly = true; consumedInput.readOnly = true; 
-            goodInput.classList.remove('highlight-input'); consumedInput.classList.remove('highlight-input');
-        } else {
-            btn.dataset.selected = 'true'; 
-            btn.className = 'btn btn-secondary selected return-toggle-btn'; 
-            btn.textContent = 'เลือกแล้ว';
-            if (!isSingle) { goodInput.readOnly = false; consumedInput.readOnly = false; } 
-            else { goodInput.value = 1; consumedInput.value = 0; }
-            goodInput.classList.add('highlight-input'); consumedInput.classList.add('highlight-input');
-        }
-        updateReturnCount();
+      const id = btn.dataset.id; 
+      const isSelected = btn.dataset.selected === 'true';
+      const isSingle = btn.dataset.single === 'true';
+      
+      const goodInput = document.getElementById(`ret-good-${id}`); 
+      const consumedInput = document.getElementById(`ret-consumed-${id}`);
+      
+      if (isSelected) {
+          btn.dataset.selected = 'false'; 
+          btn.className = 'btn btn-primary return-toggle-btn'; 
+          btn.textContent = 'กดเลือก';
+          goodInput.readOnly = true; consumedInput.readOnly = true; 
+          goodInput.classList.remove('highlight-input'); consumedInput.classList.remove('highlight-input');
+      } else {
+          btn.dataset.selected = 'true'; 
+          btn.className = 'btn btn-secondary selected return-toggle-btn'; 
+          btn.textContent = 'เลือกแล้ว';
+          if (!isSingle) { 
+            goodInput.readOnly = false; 
+            consumedInput.readOnly = false; 
+            
+            // --- เพิ่มคำสั่งให้ Focus และคลุมดำตัวเลขเดิมอัตโนมัติ ---
+            setTimeout(() => {
+              goodInput.focus();
+              goodInput.select(); // ช่วยให้พิมพ์ตัวเลขทับได้เลย ไม่ต้องกดลบก่อน
+            }, 100);
+
+          } else { 
+            goodInput.value = 1; 
+            consumedInput.value = 0; 
+          }
+          goodInput.classList.add('highlight-input'); consumedInput.classList.add('highlight-input');
+      }
+      updateReturnCount();
     }
 
     function autoCalcConsumed(id, total) { 
