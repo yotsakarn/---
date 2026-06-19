@@ -140,21 +140,15 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
     
-    /* Responsive ปรับแต่งสำหรับมือถือให้กะทัดรัดขึ้น */
+    /* Responsive */
     @media (max-width: 768px) {
-      body, button, input, textarea, select { font-size: 14px; }
-      header { padding: 10px 0; }
-      header h1 { font-size: 1.1em; padding: 0 10px; line-height: 1.3; }
-      nav { gap: 4px; padding: 5px 0; }
+      body, button, input, textarea, select { font-size: 16px; }
+      header h1 { font-size: 1.3em; }
+      nav { gap: 5px; }
       .nav-btn { font-size: 0.85em; padding: 6px 10px; }
-      
-      .search-bar { flex-wrap: wrap; padding: 8px 0; gap: 5px; }
-      .search-bar input[type="text"] { width: 100%; flex-basis: 100%; margin-bottom: 4px; padding: 10px; }
-      .search-bar button { flex: 1; padding: 10px; font-size: 0.9em; }
-
-      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
-      .item-card h3 { font-size: 0.9em; height: auto; margin-bottom: 4px; }
-      .item-card p { font-size: 0.8em; height: auto; margin-bottom: 8px; }
+      #items-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+      .item-card h3 { font-size: 0.9em; height: auto; }
+      .item-card p { font-size: 0.8em; height: auto; }
     }
   </style>
 </head>
@@ -623,6 +617,7 @@
       updateReturnCount();
     }
 
+    // 🔥 โค้ดที่ได้รับการแก้ไขแล้ว 🔥
     function toggleReturnBtn(btn) {
         const id = btn.dataset.id; 
         const isSelected = btn.dataset.selected === 'true';
