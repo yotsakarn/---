@@ -27,7 +27,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;700&display=swap" rel="stylesheet">
   
   <style>
-    * { box-sizing: border-box; }
+    /* เพิ่ม touch-action: manipulation เพื่อลดดีเลย์ 300ms ของระบบมือถือ */
+    * { box-sizing: border-box; touch-action: manipulation; }
 
     :root { 
       --primary-color: #4a69bd; 
@@ -387,6 +388,28 @@
         showModal('manage-items-modal');
       });
 
+      // ปิดแป้นพิมพ์ทันทีเมื่อกด Enter หรือ ตกลง ในช่องค้นหา
+      const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input'];
+      allSearchInputs.forEach(id => {
+        const inputBox = document.getElementById(id);
+        if (inputBox) {
+          inputBox.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              this.blur(); // คำสั่ง blur() จะเป็นการเอา Cursor ออก ทำให้คีย์บอร์ดหุบทันที
+            }
+          });
+        }
+      });
+
+      // ปิดแป้นพิมพ์ทันที เมื่อผู้ใช้เอานิ้วไถเพื่อเลื่อนดูรายการ (Scroll)
+      document.querySelector('main.container').addEventListener('touchmove', function() {
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+          activeEl.blur(); // หุบแป้นพิมพ์ทันทีเมื่อเริ่มไถหน้าจอ
+        }
+      }, { passive: true });
+
       document.getElementById('search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll('.item-card').forEach(card => {
@@ -575,7 +598,6 @@
       const btn = document.getElementById('add-btn-' + id);
       if(btn) {
           const inCart = cart.findIndex(c => c.id == id) >= 0;
-          // แก้ไขตรงนี้ เพิ่มคลาส btn เข้าไปเพื่อไม่ให้ปุ่มเสียการตั้งค่า CSS
           btn.className = inCart ? 'btn btn-secondary selected' : 'btn btn-primary';
           btn.textContent = inCart ? 'เอาออก' : 'ใส่ตะกร้า';
       }
