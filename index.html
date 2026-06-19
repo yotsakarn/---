@@ -179,6 +179,12 @@
         width: 40px !important;
         font-size: 13px !important;
       }
+      
+      /* ซ่อนคอลัมน์รหัส (คอลัมน์ที่ 2) ในตารางคืนของบนหน้าจอมือถือ */
+      #return-view table th:nth-child(2),
+      #return-view table td:nth-child(2) {
+        display: none !important;
+      }
     }
   </style>
 </head>
@@ -223,6 +229,7 @@
           <thead>
             <tr>
               <th style="width: 80px; text-align: center;">จัดการ</th>
+              <th>รหัส</th>
               <th>ผู้ยืม</th>
               <th>ชื่ออุปกรณ์</th>
               <th style="text-align: center;">ยืมไป</th>
@@ -518,10 +525,10 @@
           const payload = { id: id || null, name: document.getElementById('item-name').value, description: document.getElementById('item-description').value, quantity: document.getElementById('item-quantity').value, image: document.getElementById('item-image-base64').value };
           showLoader(); const res = id ? await AppDB.updateItem(payload) : await AppDB.addItem(payload); hideLoader();
           if(res.success) { 
-              showAlert('บันทึกสำเร็จ!'); 
-              hideModal('item-form-modal'); showModal('manage-items-modal'); 
-              await fetchAllData();
-              if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
+             showAlert('บันทึกสำเร็จ!'); 
+             hideModal('item-form-modal'); showModal('manage-items-modal'); 
+             await fetchAllData();
+             if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
           }
       });
 
@@ -628,7 +635,7 @@
       const tbody = document.getElementById('return-items-body'); tbody.innerHTML = '';
       
       if(!items || items.length === 0) { 
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">ไม่มีรายการที่ต้องคืน</td></tr>`; 
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">ไม่มีรายการที่ต้องคืน</td></tr>`; 
         updateReturnCount(); 
         return; 
       }
@@ -647,6 +654,7 @@
                      data-single="${isSingle}" 
                      onclick="toggleReturnBtn(this)">กดเลือก</button>
           </td>
+          <td>${item.historyId}</td>
           <td>${item.borrowerName}</td>
           <td>${item.itemName}</td>
           <td style="text-align: center; font-weight: bold;">${qty}</td>
@@ -749,10 +757,10 @@
       const history = window.allStats.rawHistory;
       const container = document.getElementById('history-table-container');
       if(!history || history.length === 0) { container.innerHTML = '<p style="text-align:center;">ไม่มีประวัติ</p>'; return; }
-      let html = `<table><thead><tr><th>ผู้ยืม</th><th>ชื่ออุปกรณ์</th><th>จำนวนยืม</th><th>วันที่ยืม</th><th>สถานะ</th><th>วันที่คืนจริง</th></tr></thead><tbody id="hist-body">`;
+      let html = `<table><thead><tr><th>รหัส</th><th>ผู้ยืม</th><th>ชื่ออุปกรณ์</th><th>จำนวนยืม</th><th>วันที่ยืม</th><th>สถานะ</th><th>วันที่คืนจริง</th></tr></thead><tbody id="hist-body">`;
       history.forEach(h => {
           let badge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
-          html += `<tr><td>${h.borrowerName}</td><td>${h.itemName}</td><td>${h.borrowQty}</td><td>${h.borrowDate}</td><td>${badge}</td><td>${h.actualReturnDate}</td></tr>`;
+          html += `<tr><td>${h.historyId}</td><td>${h.borrowerName}</td><td>${h.itemName}</td><td>${h.borrowQty}</td><td>${h.borrowDate}</td><td>${badge}</td><td>${h.actualReturnDate}</td></tr>`;
       });
       container.innerHTML = html + `</tbody></table>`;
     }
