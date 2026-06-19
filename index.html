@@ -410,6 +410,17 @@
         }
       }, { passive: true });
 
+      // --- เริ่มโค้ดที่เพิ่มใหม่: เลื่อนหน้าจอให้ช่องกรอกอยู่ตรงกลางเพื่อไม่ให้คีย์บอร์ดบัง ---
+      document.addEventListener('focusin', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+          // หน่วงเวลา 300ms รอให้แป้นพิมพ์เด้งขึ้นมาให้เสร็จก่อน แล้วค่อยเลื่อน
+          setTimeout(() => {
+            e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
+        }
+      });
+      // --- จบโค้ดที่เพิ่มใหม่ ---
+
       document.getElementById('search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll('.item-card').forEach(card => {
