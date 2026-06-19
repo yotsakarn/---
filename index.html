@@ -575,7 +575,8 @@
       const btn = document.getElementById('add-btn-' + id);
       if(btn) {
           const inCart = cart.findIndex(c => c.id == id) >= 0;
-          btn.className = inCart ? 'btn btn-secondary selected' : 'btn-primary';
+          // แก้ไขตรงนี้ เพิ่มคลาส btn เข้าไปเพื่อไม่ให้ปุ่มเสียการตั้งค่า CSS
+          btn.className = inCart ? 'btn btn-secondary selected' : 'btn btn-primary';
           btn.textContent = inCart ? 'เอาออก' : 'ใส่ตะกร้า';
       }
     }
