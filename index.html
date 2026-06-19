@@ -230,8 +230,8 @@
             <tr>
               <th style="width: 80px; text-align: center;">จัดการ</th>
               <th>รหัส</th>
-              <th>ชื่ออุปกรณ์</th>
               <th>ผู้ยืม</th>
+              <th>ชื่ออุปกรณ์</th>
               <th style="text-align: center;">ยืมไป</th>
               <th style="text-align: center;">คืน</th>
               <th style="text-align: center;">ใช้ไป</th>
@@ -655,8 +655,8 @@
                      onclick="toggleReturnBtn(this)">กดเลือก</button>
           </td>
           <td>${item.historyId}</td>
-          <td>${item.itemName}</td>
           <td>${item.borrowerName}</td>
+          <td>${item.itemName}</td>
           <td style="text-align: center; font-weight: bold;">${qty}</td>
           <td style="text-align: center;" class="qty-input-group"><input type="number" id="ret-good-${item.historyId}" value="${qty}" min="0" max="${qty}" readonly onchange="autoCalcConsumed(${item.historyId}, ${qty})"></td>
           <td style="text-align: center;" class="qty-input-group"><input type="number" id="ret-consumed-${item.historyId}" value="0" min="0" max="${qty}" readonly onchange="autoCalcGood(${item.historyId}, ${qty})"></td>
