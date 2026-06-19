@@ -159,7 +159,6 @@
       .item-card h3 { font-size: 0.9em; height: auto; margin-bottom: 4px; }
       .item-card p { font-size: 0.8em; height: auto; margin-bottom: 8px; }
 
-      /* การปรับแต่งส่วนจัดการคืนของในมือถือ */
       #return-view table th:first-child,
       #return-view table td:first-child {
         width: 60px !important;
@@ -180,7 +179,6 @@
         font-size: 13px !important;
       }
       
-      /* ซ่อนคอลัมน์รหัส (คอลัมน์ที่ 2) ในตารางคืนของบนหน้าจอมือถือ */
       #return-view table th:nth-child(2),
       #return-view table td:nth-child(2) {
         display: none !important;
@@ -248,8 +246,9 @@
         <div class="search-bar" style="position: static; margin-bottom: 5px; border-bottom: none; padding: 0;">
           <input type="text" id="history-search-input" placeholder="ค้นหาประวัติ..." inputmode="search" enterkeyhint="search">
         </div>
-        <div style="padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">
             <h2 style="margin: 0; font-size: 1.2em;">ประวัติการยืม-คืนทั้งหมด</h2>
+            <button onclick="exportHistoryToPDF()" class="btn btn-secondary" style="background-color: #ef4444; border: none; padding: 8px 16px;">📄 ดาวน์โหลด PDF</button>
         </div>
       </div>
       <div class="table-container" style="max-height: calc(100vh - 250px);"><div id="history-table-container"></div></div>
@@ -525,10 +524,10 @@
           const payload = { id: id || null, name: document.getElementById('item-name').value, description: document.getElementById('item-description').value, quantity: document.getElementById('item-quantity').value, image: document.getElementById('item-image-base64').value };
           showLoader(); const res = id ? await AppDB.updateItem(payload) : await AppDB.addItem(payload); hideLoader();
           if(res.success) { 
-             showAlert('บันทึกสำเร็จ!'); 
-             hideModal('item-form-modal'); showModal('manage-items-modal'); 
-             await fetchAllData();
-             if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
+              showAlert('บันทึกสำเร็จ!'); 
+              hideModal('item-form-modal'); showModal('manage-items-modal'); 
+              await fetchAllData();
+              if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
           }
       });
 
@@ -689,7 +688,6 @@
             goodInput.readOnly = false; 
             consumedInput.readOnly = false; 
             
-            // --- เลื่อนหน้าจอให้ช่องกรอกมาอยู่ตรงกลาง (เด้งไปหา) แต่ไม่ทริกเกอร์แป้นพิมพ์ ---
             setTimeout(() => {
               goodInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 100);
@@ -757,10 +755,30 @@
       const history = window.allStats.rawHistory;
       const container = document.getElementById('history-table-container');
       if(!history || history.length === 0) { container.innerHTML = '<p style="text-align:center;">ไม่มีประวัติ</p>'; return; }
-      let html = `<table><thead><tr><th>รหัส</th><th>ผู้ยืม</th><th>ชื่ออุปกรณ์</th><th>จำนวนยืม</th><th>วันที่ยืม</th><th>สถานะ</th><th>วันที่คืนจริง</th></tr></thead><tbody id="hist-body">`;
+      
+      let html = `<table>
+        <thead>
+          <tr>
+            <th style="background-color: #3b82f6; color: white;">ผู้ยืม</th>
+            <th style="background-color: #8b5cf6; color: white;">ชื่ออุปกรณ์</th>
+            <th style="background-color: #f59e0b; color: white; text-align: center;">จำนวนยืม</th>
+            <th style="background-color: #10b981; color: white;">วันที่ยืม</th>
+            <th style="background-color: #6366f1; color: white; text-align: center;">สถานะ</th>
+            <th style="background-color: #14b8a6; color: white;">วันที่คืนจริง</th>
+          </tr>
+        </thead>
+        <tbody id="hist-body">`;
+      
       history.forEach(h => {
           let badge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
-          html += `<tr><td>${h.historyId}</td><td>${h.borrowerName}</td><td>${h.itemName}</td><td>${h.borrowQty}</td><td>${h.borrowDate}</td><td>${badge}</td><td>${h.actualReturnDate}</td></tr>`;
+          html += `<tr>
+            <td>${h.borrowerName}</td>
+            <td>${h.itemName}</td>
+            <td style="text-align: center;">${h.borrowQty}</td>
+            <td>${h.borrowDate}</td>
+            <td style="text-align: center;">${badge}</td>
+            <td>${h.actualReturnDate}</td>
+          </tr>`;
       });
       container.innerHTML = html + `</tbody></table>`;
     }
@@ -792,6 +810,43 @@
           tableContainer.style.maxHeight = originalMaxHeight; tableContainer.style.overflow = originalOverflow;
           if (pdfBtn) pdfBtn.style.visibility = 'visible';
           hideLoader(); showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
+        });
+      }, 300);
+    }
+
+    function exportHistoryToPDF() {
+      showLoader();
+      const containerView = document.getElementById('history-view');
+      const tableContainer = containerView.querySelector('.table-container');
+      const originalMaxHeight = tableContainer.style.maxHeight;
+      const originalOverflow = tableContainer.style.overflow;
+      
+      tableContainer.style.maxHeight = 'none'; 
+      tableContainer.style.overflow = 'visible';
+      
+      const searchInput = document.getElementById('history-search-input').value.trim();
+      const fileName = searchInput ? `ประวัติยืมคืน_${searchInput}.pdf` : 'ประวัติยืมคืนทั้งหมด.pdf';
+      
+      const opt = { 
+        margin: [10, 10, 10, 10], 
+        filename: fileName, 
+        image: { type: 'jpeg', quality: 0.95 }, 
+        html2canvas: { scale: 1.5, useCORS: true, logging: false, letterRendering: true, scrollY: 0, scrollX: 0 }, 
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+
+      setTimeout(() => {
+        html2pdf().set(opt).from(tableContainer).save().then(() => {
+          tableContainer.style.maxHeight = originalMaxHeight; 
+          tableContainer.style.overflow = originalOverflow;
+          hideLoader(); 
+          showAlert('ดาวน์โหลดประวัติสำเร็จ!');
+        }).catch(err => {
+          console.error("PDF Export Error:", err);
+          tableContainer.style.maxHeight = originalMaxHeight; 
+          tableContainer.style.overflow = originalOverflow;
+          hideLoader(); 
+          showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
         });
       }, 300);
     }
