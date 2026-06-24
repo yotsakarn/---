@@ -184,6 +184,27 @@
         display: none !important;
       }
     }
+
+    /* --- ปรับแต่ง UI กล้องสแกนให้เหมือนแอป LINE --- */
+    #qr-modal .modal-content {
+      width: 95%;
+      padding: 15px;
+      border-radius: 16px;
+      margin: 5% auto;
+    }
+    
+    #reader {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      border: none !important;
+    }
+    
+    #reader video {
+      object-fit: cover !important;
+      border-radius: 12px;
+      transform: scale(1.02);
+    }
   </style>
 </head>
 <body>
@@ -296,7 +317,7 @@
   <div id="qr-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header"><h2>สแกนรหัสอุปกรณ์</h2><span class="close-btn" id="close-qr-btn">×</span></div>
-      <div id="reader" style="width: 100%; min-height: 300px; background: #000;"></div>
+      <div id="reader"></div>
     </div>
   </div>
   
@@ -666,7 +687,6 @@
       updateReturnCount();
     }
 
-    // --- ส่วนที่ได้รับการแก้ไข: ไม่เลื่อนหน้าจอบนคอม แต่บนมือถือเลื่อนเหมือนเดิม ---
     function toggleReturnBtn(btn) {
       const id = btn.dataset.id; 
       const isSelected = btn.dataset.selected === 'true';
@@ -690,7 +710,6 @@
             goodInput.readOnly = false; 
             consumedInput.readOnly = false; 
             
-            // ตรวจสอบขนาดหน้าจอ หากความกว้างหน้าจอ <= 768px (มือถือ) ค่อยเลื่อนหน้าจอ
             if (window.innerWidth <= 768) {
                 setTimeout(() => {
                     goodInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -698,7 +717,6 @@
             }
 
           } else { 
-            // อุปกรณ์ที่มีชิ้นเดียว (ไม่ต้องเลื่อนหน้าจอ)
             goodInput.value = 1; 
             consumedInput.value = 0; 
           }
@@ -707,7 +725,6 @@
       }
       updateReturnCount();
     }
-    // ---------------------------------------------------------------------
 
     function autoCalcConsumed(id, total) { 
       const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); 
@@ -860,12 +877,12 @@
     }
 
     function renderManageItemsTable() {
-         const container = document.getElementById('manage-items-table-container');
-         let html = `<table><thead><tr><th>รูป</th><th>ชื่ออุปกรณ์</th><th>สต็อกเริ่ม</th><th>พร้อมยืม</th><th>จัดการ</th></tr></thead><tbody>`;
-         window.allItems.forEach(item => {
-            html += `<tr><td><img src="${item.image}" style="width:30px; height:30px; object-fit:contain;"></td><td>${item.name}</td><td>${item.totalQuantity}</td><td>${item.availableQuantity}</td><td><button class="btn btn-edit" onclick="editItem('${item.id}')">แก้ไข</button><button class="btn btn-delete" onclick="deleteItem('${item.id}')">ลบ</button></td></tr>`;
-         });
-         container.innerHTML = html + `</tbody></table>`;
+          const container = document.getElementById('manage-items-table-container');
+          let html = `<table><thead><tr><th>รูป</th><th>ชื่ออุปกรณ์</th><th>สต็อกเริ่ม</th><th>พร้อมยืม</th><th>จัดการ</th></tr></thead><tbody>`;
+          window.allItems.forEach(item => {
+             html += `<tr><td><img src="${item.image}" style="width:30px; height:30px; object-fit:contain;"></td><td>${item.name}</td><td>${item.totalQuantity}</td><td>${item.availableQuantity}</td><td><button class="btn btn-edit" onclick="editItem('${item.id}')">แก้ไข</button><button class="btn btn-delete" onclick="deleteItem('${item.id}')">ลบ</button></td></tr>`;
+          });
+          container.innerHTML = html + `</tbody></table>`;
     }
 
     function editItem(id) {
@@ -886,7 +903,24 @@
 
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
-      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, onScanFailure).catch(() => { showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); hideModal('qr-modal'); });
+      
+      const screenWidth = window.innerWidth;
+      const boxSize = screenWidth < 600 ? 250 : 300; 
+
+      html5QrCode.start(
+        { facingMode: "environment" }, 
+        { 
+          fps: 30, 
+          qrbox: { width: boxSize, height: boxSize },
+          aspectRatio: window.innerHeight / window.innerWidth
+        }, 
+        onScanSuccess, 
+        onScanFailure
+      ).catch((err) => { 
+        console.error(err);
+        showAlert("กรุณาให้สิทธิ์เข้าถึงกล้องถ่ายรูป", "error"); 
+        hideModal('qr-modal'); 
+      });
     }
 
     function stopScanner() { 
