@@ -143,6 +143,28 @@
     .stat-card { background-color: var(--white); padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
+
+    /* --- CSS กล้องและกรอบสแกน QR Code --- */
+    .qr-scanner-container { position: relative; width: 100%; min-height: 300px; background: #000; border-radius: 8px; overflow: hidden; }
+    .qr-target-frame {
+      display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 250px; height: 250px; pointer-events: none; z-index: 10;
+    }
+    .qr-target-frame .corner { position: absolute; width: 40px; height: 40px; border-color: #10b981; border-style: solid; }
+    .qr-target-frame .top-left { top: 0; left: 0; border-width: 4px 0 0 4px; }
+    .qr-target-frame .top-right { top: 0; right: 0; border-width: 4px 4px 0 0; }
+    .qr-target-frame .bottom-left { bottom: 0; left: 0; border-width: 0 0 4px 4px; }
+    .qr-target-frame .bottom-right { bottom: 0; right: 0; border-width: 0 4px 4px 0; }
+    .qr-target-frame .laser {
+      position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: #10b981;
+      box-shadow: 0 0 8px #10b981; animation: laserScan 2s infinite ease-in-out;
+    }
+    @keyframes laserScan {
+      0% { top: 0; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
     
     @media (max-width: 768px) {
       body, button, input, textarea, select { font-size: 14px; }
@@ -296,7 +318,16 @@
   <div id="qr-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header"><h2>สแกนรหัสอุปกรณ์</h2><span class="close-btn" id="close-qr-btn">×</span></div>
-      <div id="reader" style="width: 100%; min-height: 300px; background: #000;"></div>
+      <div class="qr-scanner-container">
+        <div id="reader" style="width: 100%; height: 100%;"></div>
+        <div id="qr-target-frame" class="qr-target-frame">
+           <div class="corner top-left"></div>
+           <div class="corner top-right"></div>
+           <div class="corner bottom-left"></div>
+           <div class="corner bottom-right"></div>
+           <div class="laser"></div>
+        </div>
+      </div>
     </div>
   </div>
   
@@ -511,7 +542,7 @@
       });
 
       document.getElementById('open-add-new-item-form').addEventListener('click', () => {
-           document.getElementById('item-form').reset(); document.getElementById('item-id').value = ''; document.getElementById('image-preview').style.display = 'none'; document.getElementById('item-image-base64').value = ''; hideModal('manage-items-modal'); showModal('item-form-modal');
+            document.getElementById('item-form').reset(); document.getElementById('item-id').value = ''; document.getElementById('image-preview').style.display = 'none'; document.getElementById('item-image-base64').value = ''; hideModal('manage-items-modal'); showModal('item-form-modal');
       });
 
       document.getElementById('item-image-upload').addEventListener('change', function(e) {
@@ -666,7 +697,6 @@
       updateReturnCount();
     }
 
-    // --- ส่วนที่ได้รับการแก้ไข: ไม่เลื่อนหน้าจอบนคอม แต่บนมือถือเลื่อนเหมือนเดิม ---
     function toggleReturnBtn(btn) {
       const id = btn.dataset.id; 
       const isSelected = btn.dataset.selected === 'true';
@@ -690,7 +720,6 @@
             goodInput.readOnly = false; 
             consumedInput.readOnly = false; 
             
-            // ตรวจสอบขนาดหน้าจอ หากความกว้างหน้าจอ <= 768px (มือถือ) ค่อยเลื่อนหน้าจอ
             if (window.innerWidth <= 768) {
                 setTimeout(() => {
                     goodInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -698,7 +727,6 @@
             }
 
           } else { 
-            // อุปกรณ์ที่มีชิ้นเดียว (ไม่ต้องเลื่อนหน้าจอ)
             goodInput.value = 1; 
             consumedInput.value = 0; 
           }
@@ -707,7 +735,6 @@
       }
       updateReturnCount();
     }
-    // ---------------------------------------------------------------------
 
     function autoCalcConsumed(id, total) { 
       const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); 
@@ -884,13 +911,44 @@
         });
     }
 
+    /* --- อัปเกรดฟังก์ชันควบคุมกล้องสแกน --- */
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
-      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, onScanFailure).catch(() => { showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); hideModal('qr-modal'); });
+      
+      const config = { 
+        fps: 30, // ดันเฟรมเรตสแกนไวขึ้น
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0, // บังคับสัดส่วนกล้อง
+        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] // เจาะจงหาแค่ QR ทำให้เร็วขึ้นมาก
+      };
+
+      html5QrCode.start(
+        { facingMode: "environment" }, 
+        config, 
+        onScanSuccess, 
+        onScanFailure
+      ).then(() => {
+        // เมื่อกล้องพร้อมทำงาน ให้แสดงกรอบเป้าเล็ง
+        const targetFrame = document.getElementById('qr-target-frame');
+        if(targetFrame) targetFrame.style.display = 'block';
+      }).catch((err) => { 
+        console.error("Camera access error:", err);
+        showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); 
+        hideModal('qr-modal'); 
+      });
     }
 
     function stopScanner() { 
-      if (html5QrCode) { html5QrCode.stop().then(() => { html5QrCode.clear(); html5QrCode = null; }).catch(e => console.log("Scanner stop error:", e)); } 
+      if (html5QrCode) { 
+        html5QrCode.stop().then(() => { 
+          html5QrCode.clear(); 
+          html5QrCode = null; 
+        }).catch(e => console.log("Scanner stop error:", e)); 
+      } 
+      // ซ่อนกรอบเป้าเล็ง
+      const targetFrame = document.getElementById('qr-target-frame');
+      if(targetFrame) targetFrame.style.display = 'none';
+      
       hideModal('qr-modal'); 
     }
 
@@ -906,7 +964,8 @@
       } else { showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error'); }
     }
     
-    function onScanFailure() {}
+    function onScanFailure() { /* ปล่อยว่างเพื่อรัน Background */ }
+    
     function showModal(modalId) { document.getElementById(modalId).style.display = "block"; }
     function hideModal(modalId) { document.getElementById(modalId).style.display = "none"; }
     function showLoader() { document.getElementById('loader').style.display = "flex"; }
