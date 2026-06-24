@@ -144,11 +144,21 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
 
-    /* --- CSS กล้องและกรอบสแกน QR Code --- */
-    .qr-scanner-container { position: relative; width: 100%; min-height: 300px; background: #000; border-radius: 8px; overflow: hidden; }
+    /* --- CSS กล้องและกรอบสแกน QR Code (อัปเกรด) --- */
+    .qr-scanner-container { position: relative; width: 100%; min-height: 400px; background: #000; border-radius: 8px; overflow: hidden; }
+    
+    /* บังคับภาพกล้องให้เต็มกรอบ ไม่ให้มีขอบดำ */
+    .qr-scanner-container video { 
+      object-fit: cover !important; 
+      width: 100%; 
+      height: 100%; 
+    }
+
     .qr-target-frame {
       display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       width: 250px; height: 250px; pointer-events: none; z-index: 10;
+      /* ทำพื้นหลังรอบนอกของเป้าเล็งให้มืดลง เพื่อให้ตรงกลางสว่าง */
+      box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.6);
     }
     .qr-target-frame .corner { position: absolute; width: 40px; height: 40px; border-color: #10b981; border-style: solid; }
     .qr-target-frame .top-left { top: 0; left: 0; border-width: 4px 0 0 4px; }
@@ -911,31 +921,62 @@
         });
     }
 
-    /* --- อัปเกรดฟังก์ชันควบคุมกล้องสแกน --- */
+    /* --- อัปเกรดฟังก์ชันควบคุมกล้องสแกน (เพิ่ม HD, Auto-Focus, และ Zoom) --- */
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
       
       const config = { 
-        fps: 30, // ดันเฟรมเรตสแกนไวขึ้น
+        fps: 30, // เฟรมเรตสูงสุดเพื่อความลื่นไหล
         qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0, // บังคับสัดส่วนกล้อง
-        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] // เจาะจงหาแค่ QR ทำให้เร็วขึ้นมาก
+        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] 
+      };
+
+      // ขอสิทธิ์กล้องหลัง บังคับโฟกัสต่อเนื่อง และขอความละเอียดสูงสุด (HD/4K)
+      const cameraConfig = {
+        facingMode: "environment",
+        width: { ideal: 1920, max: 3840 },
+        height: { ideal: 1080, max: 2160 },
+        advanced: [{ focusMode: "continuous" }]
       };
 
       html5QrCode.start(
-        { facingMode: "environment" }, 
+        cameraConfig, 
         config, 
         onScanSuccess, 
         onScanFailure
       ).then(() => {
-        // เมื่อกล้องพร้อมทำงาน ให้แสดงกรอบเป้าเล็ง
+        // เมื่อกล้องพร้อมทำงาน ให้แสดงกรอบเป้าเล็งสีเขียว
         const targetFrame = document.getElementById('qr-target-frame');
         if(targetFrame) targetFrame.style.display = 'block';
+
+        // พยายามดึงฮาร์ดแวร์เพื่อซูมภาพเข้าไป 2 เท่า เพื่อให้สแกนระยะไกลได้ง่ายขึ้น
+        setTimeout(() => {
+            applyZoomIfSupported(html5QrCode);
+        }, 1000);
+
       }).catch((err) => { 
         console.error("Camera access error:", err);
-        showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); 
+        showAlert("ไม่สามารถเข้าถึงกล้องได้ กรุณาตรวจสอบสิทธิ์การใช้งานกล้อง", "error"); 
         hideModal('qr-modal'); 
       });
+    }
+
+    // ฟังก์ชันสั่งให้กล้องซูม (รองรับในมือถือส่วนใหญ่)
+    function applyZoomIfSupported(scannerInstance) {
+       try {
+          const videoTrack = scannerInstance.getRunningTrack();
+          if (videoTrack) {
+              const capabilities = videoTrack.getCapabilities();
+              if (capabilities.zoom) {
+                  const zoomValue = Math.min(capabilities.zoom.max, 2.0); // ซูม 2 เท่า หรือสูงสุดเท่าที่ทำได้
+                  videoTrack.applyConstraints({
+                      advanced: [{ zoom: zoomValue }]
+                  });
+              }
+          }
+       } catch(e) {
+           console.log("Hardware Zoom not supported on this browser/device.");
+       }
     }
 
     function stopScanner() { 
