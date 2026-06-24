@@ -10,17 +10,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
 
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-XXXXXXXXXX');
-  </script>
+  <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  
+  <!-- เปลี่ยน Library เป็น Nimiq QR Scanner เพื่อให้มีเส้นตีกรอบเป้าหมายแบบ Line App -->
+  <script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -144,26 +140,43 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
 
-    /* --- CSS กล้องและกรอบสแกน QR Code --- */
-    .qr-scanner-container { position: relative; width: 100%; min-height: 300px; background: #000; border-radius: 8px; overflow: hidden; }
-    .qr-target-frame {
-      display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 250px; height: 250px; pointer-events: none; z-index: 10;
+    /* ปรับปรุง CSS QR Code Scanner ให้เต็มจอ (แบบมืออาชีพ/เหมือนแอปจริง) */
+    #qr-modal .modal-content {
+      margin: 0;
+      width: 100%;
+      height: 100dvh;
+      max-width: none;
+      border-radius: 0;
+      border: none;
+      background-color: #111;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
     }
-    .qr-target-frame .corner { position: absolute; width: 40px; height: 40px; border-color: #10b981; border-style: solid; }
-    .qr-target-frame .top-left { top: 0; left: 0; border-width: 4px 0 0 4px; }
-    .qr-target-frame .top-right { top: 0; right: 0; border-width: 4px 4px 0 0; }
-    .qr-target-frame .bottom-left { bottom: 0; left: 0; border-width: 0 0 4px 4px; }
-    .qr-target-frame .bottom-right { bottom: 0; right: 0; border-width: 0 4px 4px 0; }
-    .qr-target-frame .laser {
-      position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: #10b981;
-      box-shadow: 0 0 8px #10b981; animation: laserScan 2s infinite ease-in-out;
+    #qr-modal .modal-header {
+      background-color: #111;
+      border-bottom: 1px solid #333;
+      padding: 15px;
+      margin-bottom: 0;
     }
-    @keyframes laserScan {
-      0% { top: 0; opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { top: 100%; opacity: 0; }
+    #qr-modal .modal-header h2 { color: #fff; }
+    #qr-modal .close-btn { color: #fff; }
+    
+    .qr-scanner-container {
+      flex-grow: 1;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #qr-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     
     @media (max-width: 768px) {
@@ -223,6 +236,7 @@
   </div>
 
   <main class="container">
+    <!-- View: Items -->
     <div id="items-view" class="view active">
       <div class="search-bar">
         <input type="text" id="search-input" placeholder="ค้นหาชื่ออุปกรณ์ หรือรายละเอียด..." inputmode="search" enterkeyhint="search">
@@ -232,6 +246,7 @@
       <div id="items-grid"></div>
     </div>
 
+    <!-- View: Return -->
     <div id="return-view" class="view">
       <div style="position: sticky; top: 0; background-color: var(--light-gray); z-index: 990; padding-top: 10px;">
         <div class="search-bar" style="position: static; margin-bottom: 5px; border-bottom: none; padding: 0;">
@@ -263,6 +278,7 @@
       </div>
     </div>
     
+    <!-- View: History -->
     <div id="history-view" class="view">
       <div style="position: sticky; top: 0; background-color: var(--light-gray); z-index: 990; padding-bottom: 5px; padding-top: 10px;">
         <div class="search-bar" style="position: static; margin-bottom: 5px; border-bottom: none; padding: 0;">
@@ -276,6 +292,7 @@
       <div class="table-container" style="max-height: calc(100vh - 250px);"><div id="history-table-container"></div></div>
     </div>
     
+    <!-- View: Statistics -->
     <div id="stats-view" class="view">
       <h2 style="margin-top: 10px; font-size: 1.2em;">สถิติภาพรวม</h2>
       <div id="stats-grid"></div>
@@ -309,24 +326,23 @@
     </div>
   </main>
   
+  <!-- Sidebar Container: Cart -->
   <div id="cart-container">
     <div id="cart-header"><span>ตะกร้าของคุณ</span><span class="close-btn" id="cart-close-btn">×</span></div>
     <div id="cart-items"></div>
     <div id="cart-footer"><button id="borrow-btn" class="btn btn-primary" style="width: 100%;">ดำเนินการยืม</button></div>
   </div>
   
+  <!-- Modals -->
   <div id="qr-modal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header"><h2>สแกนรหัสอุปกรณ์</h2><span class="close-btn" id="close-qr-btn">×</span></div>
+    <div class="modal-content" id="qr-modal-content">
+      <div class="modal-header">
+        <h2 style="margin:0;">สแกนรหัสอุปกรณ์</h2>
+        <span class="close-btn" id="close-qr-btn">×</span>
+      </div>
       <div class="qr-scanner-container">
-        <div id="reader" style="width: 100%; height: 100%;"></div>
-        <div id="qr-target-frame" class="qr-target-frame">
-           <div class="corner top-left"></div>
-           <div class="corner top-right"></div>
-           <div class="corner bottom-left"></div>
-           <div class="corner bottom-right"></div>
-           <div class="laser"></div>
-        </div>
+        <!-- เปลี่ยนจาก div เป็น video ตามสเปกของ Nimiq -->
+        <video id="qr-video"></video>
       </div>
     </div>
   </div>
@@ -365,6 +381,7 @@
     </div>
   </div>
 
+  <!-- App Core Logic Scripts -->
   <script>
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzNp3PG-2gADMw5WfFcwrQ0vAcwjnoBR4pzSwTBWrzZ8sgXz_m5f23T5oA-DhWVzRuwpA/exec";
 
@@ -389,7 +406,7 @@
     };
 
     let cart = []; 
-    let html5QrCode = null;
+    let qrScanner = null; // ตัวแปรสำหรับเก็บ Instance ของกล้องสแกน
     let myPieChart = null;
     let myBarChart = null;
     
@@ -639,11 +656,13 @@
 
     function toggleCart(id, name, maxQty) {
       const existingIndex = cart.findIndex(c => c.id == id);
-      if (existingIndex >= 0) { cart.splice(existingIndex, 1); } 
-      else {
-          const qtyInput = document.getElementById('card-qty-' + id); let reqQty = parseInt(qtyInput.value) || 1;
-          if (reqQty > maxQty) reqQty = maxQty; if (reqQty < 1) reqQty = 1; 
-          cart.push({ id: id, name: name || '', maxQty: maxQty || 99, requestQty: reqQty });
+      if (existingIndex >= 0) { 
+          cart.splice(existingIndex, 1); 
+      } else {
+          const qtyInput = document.getElementById('card-qty-' + id); 
+          let reqQty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+          if (maxQty && reqQty > maxQty) reqQty = maxQty; if (reqQty < 1) reqQty = 1; 
+          cart.push({ id: id, name: name || 'อุปกรณ์', maxQty: maxQty || 99, requestQty: reqQty });
       }
       updateCartUI(); 
       const btn = document.getElementById('add-btn-' + id);
@@ -656,7 +675,9 @@
 
     function updateCartUI() {
       const cartItemsDiv = document.getElementById('cart-items'); cartItemsDiv.innerHTML = '';
-      cart.forEach((c) => { cartItemsDiv.innerHTML += `<div class="cart-item"><div style="flex-grow: 1;"><div style="font-weight: bold;">${c.name}</div><div style="font-size:0.9em; color:var(--dark-gray);">ยืม: <span style="font-weight:bold; color:var(--primary-color);">${c.requestQty}</span> ชิ้น</div></div><button class="remove-btn" onclick="toggleCart(${c.id})">&times;</button></div>`; });
+      cart.forEach((c) => { 
+        cartItemsDiv.innerHTML += `<div class="cart-item"><div style="flex-grow: 1;"><div style="font-weight: bold;">${c.name}</div><div style="font-size:0.9em; color:var(--dark-gray);">ยืม: <span style="font-weight:bold; color:var(--primary-color);">${c.requestQty}</span> ชิ้น</div></div><button class="remove-btn" onclick="toggleCart(${c.id})">&times;</button></div>`; 
+      }); 
       document.getElementById('cart-toggle-btn').textContent = `ตะกร้า (${cart.length})`; document.getElementById('borrow-btn').disabled = cart.length === 0;
     }
 
@@ -725,7 +746,6 @@
                     goodInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 100);
             }
-
           } else { 
             goodInput.value = 1; 
             consumedInput.value = 0; 
@@ -768,10 +788,10 @@
       if(!stats || stats.error || !stats.itemUsageStats) { return; }
       
       document.getElementById('stats-grid').innerHTML = `
-        <div class="stat-card"><div class="value">${stats.totalItems}</div><div class="label">ทั้งหมด (ชิ้น)</div></div>
-        <div class="stat-card"><div class="value" style="color:var(--success);">${stats.availableItems}</div><div class="label">พร้อมใช้งาน (ชิ้น)</div></div>
-        <div class="stat-card"><div class="value" style="color:var(--warning);">${stats.borrowedItems}</div><div class="label">กำลังถูกยืม (ชิ้น)</div></div>
-        <div class="stat-card"><div class="value" style="color:var(--danger);">${stats.totalConsumed}</div><div class="label">สิ้นเปลือง (ชิ้น)</div></div>`;
+        <div class="stat-card"><div class="value">${stats.totalItems || 0}</div><div class="label">ทั้งหมด (ชิ้น)</div></div>
+        <div class="stat-card"><div class="value" style="color:var(--success);">${stats.availableItems || 0}</div><div class="label">พร้อมใช้งาน (ชิ้น)</div></div>
+        <div class="stat-card"><div class="value" style="color:var(--warning);">${stats.borrowedItems || 0}</div><div class="label">กำลังถูกยืม (ชิ้น)</div></div>
+        <div class="stat-card"><div class="value" style="color:var(--danger);">${stats.totalConsumed || 0}</div><div class="label">สิ้นเปลือง (ชิ้น)</div></div>`;
 
       const tbody = document.getElementById('usage-stats-body'); tbody.innerHTML = '';
       stats.itemUsageStats.forEach(item => { 
@@ -781,15 +801,15 @@
       });
 
       if(myPieChart) myPieChart.destroy(); if(myBarChart) myBarChart.destroy();
-      myPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), { type: 'doughnut', data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems, stats.borrowedItems, stats.totalConsumed], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+      myPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), { type: 'doughnut', data: { labels: ['พร้อมยืม', 'ถูกยืม', 'ใช้สิ้นเปลือง'], datasets: [{ data: [stats.availableItems || 0, stats.borrowedItems || 0, stats.totalConsumed || 0], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] }, options: { responsive: true, maintainAspectRatio: false } });
       const topItems = (stats.mostBorrowedItems || []).slice(0, 5);
       myBarChart = new Chart(document.getElementById('topItemsBarChart').getContext('2d'), { type: 'bar', data: { labels: topItems.map(i => i.name), datasets: [{ label: 'จำนวนครั้งที่ถูกยืม', data: topItems.map(i => i.count), backgroundColor: '#3b82f6' }] }, options: { responsive: true, maintainAspectRatio: false } });
     }
 
     function renderHistoryTable() {
-      const history = window.allStats.rawHistory;
+      const history = window.allStats ? (window.allStats.rawHistory || []) : [];
       const container = document.getElementById('history-table-container');
-      if(!history || history.length === 0) { container.innerHTML = '<p style="text-align:center;">ไม่มีประวัติ</p>'; return; }
+      if(!history || history.length === 0) { container.innerHTML = '<p style="text-align:center;">ไม่มีประวัติการทำรายการ</p>'; return; }
       
       let html = `<table>
         <thead>
@@ -812,7 +832,7 @@
             <td style="text-align: center;">${h.borrowQty}</td>
             <td>${h.borrowDate}</td>
             <td style="text-align: center;">${badge}</td>
-            <td>${h.actualReturnDate}</td>
+            <td>${h.actualReturnDate || '-'}</td>
           </tr>`;
       });
       container.innerHTML = html + `</tbody></table>`;
@@ -911,60 +931,70 @@
         });
     }
 
-    /* --- อัปเกรดฟังก์ชันควบคุมกล้องสแกน --- */
+    // ฟังก์ชันเปิดกล้องสแกนด้วย Nimiq QR Scanner
     function startScanner() {
-      html5QrCode = new Html5Qrcode("reader");
-      
-      const config = { 
-        fps: 30, // ดันเฟรมเรตสแกนไวขึ้น
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0, // บังคับสัดส่วนกล้อง
-        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] // เจาะจงหาแค่ QR ทำให้เร็วขึ้นมาก
-      };
+      const videoElem = document.getElementById('qr-video');
 
-      html5QrCode.start(
-        { facingMode: "environment" }, 
-        config, 
-        onScanSuccess, 
-        onScanFailure
-      ).then(() => {
-        // เมื่อกล้องพร้อมทำงาน ให้แสดงกรอบเป้าเล็ง
-        const targetFrame = document.getElementById('qr-target-frame');
-        if(targetFrame) targetFrame.style.display = 'block';
-      }).catch((err) => { 
+      // กำหนด Worker Path สำคัญมากสำหรับ Nimiq Library เพื่อประสิทธิภาพสูงสุด
+      QrScanner.WORKER_PATH = 'https://unpkg.com/qr-scanner@1.4.2/qr-scanner-worker.min.js';
+
+      qrScanner = new QrScanner(
+        videoElem,
+        result => {
+          // 1. ทันทีที่ล็อกเป้าหมายได้ ให้หยุดภาพชั่วคราว (ผู้ใช้จะเห็นเส้นตีกรอบเป้าหมาย)
+          if(qrScanner) qrScanner.pause();
+
+          // 2. หน่วงเวลา 0.5 วินาที ก่อนดำเนินการต่อไป เพื่ออารมณ์ที่คล้ายแอปพลิเคชันพื้นเมือง
+          setTimeout(() => {
+            onScanSuccess(result.data);
+          }, 500);
+        },
+        {
+          highlightScanRegion: false, // ปิดการแสดงกรอบสี่เหลี่ยมดำตรงกลาง (ให้เต็มจอ)
+          highlightCodeOutline: true, // เปิดการตีเส้นสีเขียวรอบ QR Code ที่พบแบบในรูป
+          returnDetailedScanResult: true // สั่งให้คืนค่ากลับมาในรูปแบบอ็อบเจ็กต์อย่างละเอียด
+        }
+      );
+
+      qrScanner.start().catch((err) => {
         console.error("Camera access error:", err);
-        showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); 
-        hideModal('qr-modal'); 
+        showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้องในเบราว์เซอร์", "error");
+        hideModal('qr-modal');
       });
     }
 
+    // ฟังก์ชันปิดกล้อง
     function stopScanner() { 
-      if (html5QrCode) { 
-        html5QrCode.stop().then(() => { 
-          html5QrCode.clear(); 
-          html5QrCode = null; 
-        }).catch(e => console.log("Scanner stop error:", e)); 
-      } 
-      // ซ่อนกรอบเป้าเล็ง
-      const targetFrame = document.getElementById('qr-target-frame');
-      if(targetFrame) targetFrame.style.display = 'none';
-      
+      if (qrScanner) {
+        qrScanner.stop();
+        qrScanner.destroy(); // ล้างหน่วยความจำเมื่อปิด
+        qrScanner = null;
+      }
       hideModal('qr-modal'); 
     }
 
+    // ฟังก์ชันเมื่อสแกนได้ผลลัพธ์
     function onScanSuccess(decodedText) {
-      stopScanner();
+      stopScanner(); // เรียกปิดกล้อง
       const scannedId = decodedText.trim();
       const item = window.allItems.find(i => i.id == scannedId || i.name.toLowerCase() == scannedId.toLowerCase());
+      
       if (item) {
          showView('items-view');
-         const searchInput = document.getElementById('search-input'); searchInput.value = item.name; searchInput.dispatchEvent(new Event('input'));
-         if (item.availableQuantity > 0) { showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success'); } 
-         else { showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning'); }
-      } else { showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error'); }
+         const searchInput = document.getElementById('search-input'); 
+         searchInput.value = item.name; 
+         searchInput.dispatchEvent(new Event('input')); // พิมพ์ค้นหาอัตโนมัติให้
+         
+         if (item.availableQuantity > 0) { 
+            showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success'); 
+         } 
+         else { 
+            showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning'); 
+         }
+      } else { 
+         showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error'); 
+      }
     }
-    
-    function onScanFailure() { /* ปล่อยว่างเพื่อรัน Background */ }
     
     function showModal(modalId) { document.getElementById(modalId).style.display = "block"; }
     function hideModal(modalId) { document.getElementById(modalId).style.display = "none"; }
