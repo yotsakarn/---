@@ -666,6 +666,7 @@
       updateReturnCount();
     }
 
+    // --- ส่วนที่ได้รับการแก้ไข: ไม่เลื่อนหน้าจอบนคอม แต่บนมือถือเลื่อนเหมือนเดิม ---
     function toggleReturnBtn(btn) {
       const id = btn.dataset.id; 
       const isSelected = btn.dataset.selected === 'true';
@@ -684,18 +685,29 @@
           btn.dataset.selected = 'true'; 
           btn.className = 'btn btn-secondary selected return-toggle-btn'; 
           btn.textContent = 'เลือกแล้ว';
+          
           if (!isSingle) { 
             goodInput.readOnly = false; 
             consumedInput.readOnly = false; 
-            // เอา setTimeout และ scrollIntoView() ออกแล้ว เพื่อป้องกันหน้าจอกระโดดเลื่อนหายขึ้นไปข้างบน
+            
+            // ตรวจสอบขนาดหน้าจอ หากความกว้างหน้าจอ <= 768px (มือถือ) ค่อยเลื่อนหน้าจอ
+            if (window.innerWidth <= 768) {
+                setTimeout(() => {
+                    goodInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            }
+
           } else { 
+            // อุปกรณ์ที่มีชิ้นเดียว (ไม่ต้องเลื่อนหน้าจอ)
             goodInput.value = 1; 
             consumedInput.value = 0; 
           }
+          
           goodInput.classList.add('highlight-input'); consumedInput.classList.add('highlight-input');
       }
       updateReturnCount();
     }
+    // ---------------------------------------------------------------------
 
     function autoCalcConsumed(id, total) { 
       const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); 
