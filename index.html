@@ -296,7 +296,7 @@
   <div id="qr-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header"><h2>สแกนรหัสอุปกรณ์</h2><span class="close-btn" id="close-qr-btn">×</span></div>
-      <div id="reader" style="width: 100%; min-height: 65vh; background: #000; border-radius: 8px; overflow: hidden;"></div>
+      <div id="reader" style="width: 100%; min-height: 300px; background: #000;"></div>
     </div>
   </div>
   
@@ -666,6 +666,7 @@
       updateReturnCount();
     }
 
+    // --- ส่วนที่ได้รับการแก้ไข: ไม่เลื่อนหน้าจอบนคอม แต่บนมือถือเลื่อนเหมือนเดิม ---
     function toggleReturnBtn(btn) {
       const id = btn.dataset.id; 
       const isSelected = btn.dataset.selected === 'true';
@@ -689,6 +690,7 @@
             goodInput.readOnly = false; 
             consumedInput.readOnly = false; 
             
+            // ตรวจสอบขนาดหน้าจอ หากความกว้างหน้าจอ <= 768px (มือถือ) ค่อยเลื่อนหน้าจอ
             if (window.innerWidth <= 768) {
                 setTimeout(() => {
                     goodInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -696,6 +698,7 @@
             }
 
           } else { 
+            // อุปกรณ์ที่มีชิ้นเดียว (ไม่ต้องเลื่อนหน้าจอ)
             goodInput.value = 1; 
             consumedInput.value = 0; 
           }
@@ -704,6 +707,7 @@
       }
       updateReturnCount();
     }
+    // ---------------------------------------------------------------------
 
     function autoCalcConsumed(id, total) { 
       const g = document.getElementById(`ret-good-${id}`); const c = document.getElementById(`ret-consumed-${id}`); 
@@ -880,28 +884,9 @@
         });
     }
 
-    // ส่วนที่แก้ไข: ปรับกรอบสแกนเป็นแนวตั้งและให้เข้ารูปกับมือถือ
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
-      
-      const boxWidth = Math.min(window.innerWidth * 0.7, 300);
-      const boxHeight = boxWidth * 1.5; 
-
-      const config = { 
-        fps: 10, 
-        qrbox: { width: boxWidth, height: boxHeight },
-        aspectRatio: window.innerHeight / window.innerWidth
-      };
-
-      html5QrCode.start(
-        { facingMode: "environment" }, 
-        config, 
-        onScanSuccess, 
-        onScanFailure
-      ).catch(() => { 
-        showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); 
-        hideModal('qr-modal'); 
-      });
+      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess, onScanFailure).catch(() => { showAlert("กรุณาเปิดสิทธิ์เข้าถึงกล้อง", "error"); hideModal('qr-modal'); });
     }
 
     function stopScanner() { 
