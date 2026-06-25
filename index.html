@@ -488,14 +488,35 @@
         }
       });
 
+      // --- ส่วนที่แก้ไขเรื่องการค้นหา เริ่มต้นที่นี่ ---
       document.getElementById('search-input').addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        document.querySelectorAll('.item-card').forEach(card => {
+        const searchTerm = e.target.value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.item-card');
+        
+        // 1. เช็คก่อนว่ามีอุปกรณ์ที่ชื่อตรงกันแบบเป๊ะๆ 100% หรือไม่ (เช่น จากการนำค่าสแกน QR มาใส่)
+        let hasExactMatch = false;
+        cards.forEach(card => {
+          const title = card.querySelector('h3').textContent.toLowerCase().trim();
+          if (title === searchTerm) {
+            hasExactMatch = true;
+          }
+        });
+
+        // 2. ทำการกรองข้อมูลเพื่อแสดงผล
+        cards.forEach(card => {
           const title = card.querySelector('h3').textContent.toLowerCase();
           const desc = card.querySelector('p').textContent.toLowerCase();
-          card.style.display = (title.includes(searchTerm) || desc.includes(searchTerm)) ? 'flex' : 'none';
+          
+          if (hasExactMatch) {
+            // กรณีสแกน QR หรือพิมพ์ชื่อตรงเป๊ะ -> โชว์เฉพาะชิ้นนั้นชิ้นเดียว (ป้องกัน 1 ไปดึง 11, 21 มา)
+            card.style.display = (title.trim() === searchTerm) ? 'flex' : 'none';
+          } else {
+            // กรณีพิมพ์ค้นหาปกติแบบกว้างๆ -> โชว์ทั้งหมดที่มีคำนั้นผสมอยู่ (ค้นหาจากทั้งชื่อและรายละเอียด)
+            card.style.display = (title.includes(searchTerm) || desc.includes(searchTerm)) ? 'flex' : 'none';
+          }
         });
       });
+      // --- ส่วนที่แก้ไขเรื่องการค้นหา สิ้นสุดที่นี่ ---
 
       document.getElementById('return-search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
