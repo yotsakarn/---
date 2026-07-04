@@ -138,7 +138,7 @@
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
 
     /* =========================================
-       สไตล์สำหรับกล้องสแกน QR Code แบบเต็มจอ
+       สไตล์สำหรับกล้องสแกน QR Code แบบ LINE (เต็มจอ)
        ========================================= */
     .qr-fullscreen-container {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
@@ -231,6 +231,7 @@
   </style>
 </head>
 <body>
+  <!-- ระบบเสียง Beep เวลาสแกนติด -->
   <audio id="beep-sound" preload="auto">
     <source src="https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3" type="audio/mpeg">
   </audio>
@@ -341,6 +342,7 @@
     <div id="cart-footer"><button id="borrow-btn" class="btn btn-primary" style="width: 100%;">ดำเนินการยืม</button></div>
   </div>
   
+  <!-- เปลี่ยน Modal QR Code เดิม เป็นแบบ Fullscreen สไตล์ LINE -->
   <div id="qr-modal" class="qr-fullscreen-container">
     <div class="qr-top-bar">
       <span class="close-qr-btn" id="close-qr-btn">✕</span>
@@ -349,6 +351,7 @@
     <div id="reader-wrapper">
       <div id="reader"></div>
       
+      <!-- ปุ่มจำลองด้านบนแผงสีขาว -->
       <div class="qr-floating-actions">
          <div class="qr-action-btn"><span style="margin-right:5px;">❖</span> คิวอาร์โค้ดของฉัน</div>
          <div class="qr-gallery-btn">🖼️</div>
@@ -368,7 +371,7 @@
     <div class="modal-content">
       <div class="modal-header"><h2>กรอกข้อมูลผู้ยืม</h2><span class="close-btn" data-modal="borrow-modal">×</span></div>
       <form id="borrow-form">
-        <div class="form-group"><label>ชื่อ-สกุล ผู้ยืม สำหรับ นศ.ให้ระบุ ชื่อ-สกุล เลขที่ กลุ่ม รายวิชา</label><input type="text" id="borrower-name" required></div>
+        <div class="form-group"><label>ชื่อ-สกุล ผู้ยืม</label><input type="text" id="borrower-name" required></div>
         <div class="form-group"><label>วันที่และเวลายืม</label><input type="text" id="borrow-date-display" readonly></div>
         <div class="form-group"><label>วันที่กำหนดคืน</label><input type="date" id="return-date" required></div>
         <div class="modal-footer"><button type="submit" class="btn btn-primary">ยืนยันการยืม</button></div>
@@ -489,26 +492,11 @@
       });
 
       document.getElementById('search-input').addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase().trim();
-        const cards = document.querySelectorAll('.item-card');
-        
-        let hasExactMatch = false;
-        cards.forEach(card => {
-          const title = card.querySelector('h3').textContent.toLowerCase().trim();
-          if (title === searchTerm) {
-            hasExactMatch = true;
-          }
-        });
-
-        cards.forEach(card => {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('.item-card').forEach(card => {
           const title = card.querySelector('h3').textContent.toLowerCase();
           const desc = card.querySelector('p').textContent.toLowerCase();
-          
-          if (hasExactMatch) {
-            card.style.display = (title.trim() === searchTerm) ? 'flex' : 'none';
-          } else {
-            card.style.display = (title.includes(searchTerm) || desc.includes(searchTerm)) ? 'flex' : 'none';
-          }
+          card.style.display = (title.includes(searchTerm) || desc.includes(searchTerm)) ? 'flex' : 'none';
         });
       });
 
@@ -610,10 +598,12 @@
           }
       });
 
+      // ปุ่มเปิดสแกน QR แบบใหม่
       document.getElementById('scan-qr-btn').addEventListener('click', () => { 
         document.getElementById('qr-modal').style.display = "flex"; 
         startScanner(); 
       });
+      // ปุ่มปิดสแกน QR แบบใหม่
       document.getElementById('close-qr-btn').addEventListener('click', () => { 
         stopScanner(); 
       });
@@ -927,7 +917,7 @@
           const container = document.getElementById('manage-items-table-container');
           let html = `<table><thead><tr><th>รูป</th><th>ชื่ออุปกรณ์</th><th>สต็อกเริ่ม</th><th>พร้อมยืม</th><th>จัดการ</th></tr></thead><tbody>`;
           window.allItems.forEach(item => {
-              html += `<tr><td><img src="${item.image}" style="width:30px; height:30px; object-fit:contain;"></td><td>${item.name}</td><td>${item.totalQuantity}</td><td>${item.availableQuantity}</td><td><button class="btn btn-edit" onclick="editItem('${item.id}')">แก้ไข</button><button class="btn btn-delete" onclick="deleteItem('${item.id}')">ลบ</button></td></tr>`;
+             html += `<tr><td><img src="${item.image}" style="width:30px; height:30px; object-fit:contain;"></td><td>${item.name}</td><td>${item.totalQuantity}</td><td>${item.availableQuantity}</td><td><button class="btn btn-edit" onclick="editItem('${item.id}')">แก้ไข</button><button class="btn btn-delete" onclick="deleteItem('${item.id}')">ลบ</button></td></tr>`;
           });
           container.innerHTML = html + `</tbody></table>`;
     }
@@ -949,31 +939,17 @@
     }
 
     function startScanner() {
-      // 1. ระบุให้ระบบประมวลผลเฉพาะ QR Code เท่านั้น (ปิด Barcode อื่นๆ)
-      html5QrCode = new Html5Qrcode("reader", {
-        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ],
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
-        }
-      });
+      html5QrCode = new Html5Qrcode("reader");
       
       const screenWidth = window.innerWidth;
-      
-      // 2. สร้างกรอบสแกนเป็น "แนวตั้ง"
-      const boxWidth = screenWidth < 600 ? Math.floor(screenWidth * 0.75) : 300; 
-      const boxHeight = Math.floor(boxWidth * 1.5); 
+      const boxSize = screenWidth < 600 ? 250 : 300; 
 
       html5QrCode.start(
+        { facingMode: "environment" }, 
         { 
-          facingMode: "environment",
-          // 3. ดันความละเอียดกล้องเป็นระดับ Full HD (1080p)
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          advanced: [{ focusMode: "continuous" }] 
-        }, 
-        { 
-          fps: 15,
-          qrbox: { width: boxWidth, height: boxHeight },
+          fps: 30, 
+          qrbox: { width: boxSize, height: boxSize },
+          aspectRatio: window.innerHeight / window.innerWidth
         }, 
         onScanSuccess, 
         onScanFailure
