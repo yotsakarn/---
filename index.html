@@ -935,7 +935,7 @@
           const container = document.getElementById('manage-items-table-container');
           let html = `<table><thead><tr><th>รูป</th><th>ชื่ออุปกรณ์</th><th>สต็อกเริ่ม</th><th>พร้อมยืม</th><th>จัดการ</th></tr></thead><tbody>`;
           window.allItems.forEach(item => {
-             html += `<tr><td><img src="${item.image}" style="width:30px; height:30px; object-fit:contain;"></td><td>${item.name}</td><td>${item.totalQuantity}</td><td>${item.availableQuantity}</td><td><button class="btn btn-edit" onclick="editItem('${item.id}')">แก้ไข</button><button class="btn btn-delete" onclick="deleteItem('${item.id}')">ลบ</button></td></tr>`;
+              html += `<tr><td><img src="${item.image}" style="width:30px; height:30px; object-fit:contain;"></td><td>${item.name}</td><td>${item.totalQuantity}</td><td>${item.availableQuantity}</td><td><button class="btn btn-edit" onclick="editItem('${item.id}')">แก้ไข</button><button class="btn btn-delete" onclick="deleteItem('${item.id}')">ลบ</button></td></tr>`;
           });
           container.innerHTML = html + `</tbody></table>`;
     }
@@ -957,17 +957,30 @@
     }
 
     function startScanner() {
-      html5QrCode = new Html5Qrcode("reader");
+      // 1. เปิดใช้ Native Barcode Detector API (สแกนไวขึ้นมากในมือถือ/เบราว์เซอร์ที่รองรับ)
+      html5QrCode = new Html5Qrcode("reader", {
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        }
+      });
       
       const screenWidth = window.innerWidth;
-      const boxSize = screenWidth < 600 ? 250 : 300; 
+      // 2. ปรับขนาดกล่องสแกน (qrbox) ให้สัมพันธ์กับขนาดหน้าจอ ลดปัญหาตีกรอบใหญ่เกินไปจนล้นขอบจอ
+      const boxSize = screenWidth < 600 ? Math.floor(screenWidth * 0.75) : 300; 
 
       html5QrCode.start(
-        { facingMode: "environment" }, 
+        // 3. กำหนดให้ใช้กล้องหลัง และขอความละเอียดที่ชัดเจนขึ้น (HD)
         { 
-          fps: 30, 
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          advanced: [{ focusMode: "continuous" }] // บังคับออโต้โฟกัส (รองรับในบางอุปกรณ์)
+        }, 
+        { 
+          // 4. ลด FPS ลงเหลือ 10 เพื่อให้กล้องมีเวลาเปิดรับแสงมากขึ้น ภาพจะชัดและเบลอน้อยลง
+          fps: 10, 
           qrbox: { width: boxSize, height: boxSize },
-          aspectRatio: window.innerHeight / window.innerWidth
+          // ลบ aspectRatio ออกไป เพื่อให้ภาพคงสัดส่วนกล้องตามธรรมชาติ ไม่โดนยืดหรือบีบ
         }, 
         onScanSuccess, 
         onScanFailure
