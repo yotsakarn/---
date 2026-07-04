@@ -138,7 +138,7 @@
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
 
     /* =========================================
-       สไตล์สำหรับกล้องสแกน QR Code แบบ LINE (เต็มจอ)
+       สไตล์สำหรับกล้องสแกน QR Code (เต็มจอ)
        ========================================= */
     .qr-fullscreen-container {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
@@ -174,10 +174,12 @@
       background: #000; 
       border: none !important;
     }
+    
+    /* แก้ไขตรงนี้: ให้กล้องเต็มจอแบบ cover */
     #reader video { 
-      max-width: 100% !important; 
-      max-height: 100% !important; 
-      object-fit: contain !important; 
+      width: 100% !important; 
+      height: 100% !important; 
+      object-fit: cover !important; 
     }
     
     .qr-floating-actions {
@@ -383,7 +385,7 @@
     <div class="modal-content">
       <div class="modal-header"><h2>กรอกข้อมูลผู้ยืม</h2><span class="close-btn" data-modal="borrow-modal">×</span></div>
       <form id="borrow-form">
-        <div class="form-group"><label>ชื่อ-สกุล ผู้ยืม สำหรับนศ.ให้ระบุชื่อ-สกุล รหัสนศ. เลขที่กลุ่ม รายวิชาที่ยืม</label><input type="text" id="borrower-name" required></div>
+        <div class="form-group"><label>ชื่อ-สกุล ผู้ยืม</label><input type="text" id="borrower-name" required></div>
         <div class="form-group"><label>วันที่และเวลายืม</label><input type="text" id="borrow-date-display" readonly></div>
         <div class="form-group"><label>วันที่กำหนดคืน</label><input type="date" id="return-date" required></div>
         <div class="modal-footer"><button type="submit" class="btn btn-primary">ยืนยันการยืม</button></div>
@@ -490,7 +492,6 @@
         showModal('manage-items-modal');
       });
 
-      // ป้องกันการกด Enter แล้วโหลดหน้าใหม่
       const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input', 'stats-search-input'];
       allSearchInputs.forEach(id => {
         const inputBox = document.getElementById(id);
@@ -527,7 +528,6 @@
         });
       });
 
-      // กรองข้อมูลตารางสถิติ
       document.getElementById('stats-search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll('#usage-stats-body tr').forEach(row => {
@@ -961,18 +961,19 @@
         });
     }
 
+    /* แก้ไขฟังก์ชันกล้องตรงนี้: เอา qrbox ออก และปรับให้ดึงภาพกว้างสุด */
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
-      
-      const screenWidth = window.innerWidth;
-      const boxSize = screenWidth < 600 ? 250 : 300; 
 
       html5QrCode.start(
         { facingMode: "environment" }, 
         { 
-          fps: 15, 
-          qrbox: { width: boxSize, height: boxSize },
-          disableFlip: false
+          fps: 30, // เพิ่มเฟรมเรตเพื่อให้กล้องลื่นไหลขึ้น
+          disableFlip: false,
+          videoConstraints: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
         }, 
         onScanSuccess, 
         onScanFailure
@@ -1006,7 +1007,6 @@
       stopScanner();
       const scannedId = decodedText.trim();
       
-      // ค้นหาแบบ Exact Match
       const item = window.allItems.find(i => String(i.id) === scannedId || i.name.toLowerCase() === scannedId.toLowerCase());
       
       if (item) {
@@ -1014,12 +1014,11 @@
          const searchInput = document.getElementById('search-input'); 
          searchInput.value = item.name; 
          
-         // กรองแสดงการ์ดโดยอิงจาก ID ให้ตรงเป๊ะ
          document.querySelectorAll('.item-card').forEach(card => {
             if (card.dataset.id == item.id) {
-                card.style.display = 'flex'; // แสดงแค่อันที่สแกนเจอ
+                card.style.display = 'flex';
             } else {
-                card.style.display = 'none'; // ซ่อนอันอื่นๆ ทั้งหมด
+                card.style.display = 'none';
             }
          });
 
