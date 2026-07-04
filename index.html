@@ -138,7 +138,7 @@
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
 
     /* =========================================
-       สไตล์สำหรับกล้องสแกน QR Code (เต็มจอ)
+       สไตล์สำหรับกล้องสแกน QR Code แบบ LINE (เต็มจอ)
        ========================================= */
     .qr-fullscreen-container {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
@@ -174,11 +174,10 @@
       background: #000; 
       border: none !important;
     }
-    
     #reader video { 
-      width: 100% !important; 
-      height: 100% !important; 
-      object-fit: cover !important; 
+      max-width: 100% !important; 
+      max-height: 100% !important; 
+      object-fit: contain !important; 
     }
     
     .qr-floating-actions {
@@ -491,6 +490,7 @@
         showModal('manage-items-modal');
       });
 
+      // ป้องกันการกด Enter แล้วโหลดหน้าใหม่
       const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input', 'stats-search-input'];
       allSearchInputs.forEach(id => {
         const inputBox = document.getElementById(id);
@@ -527,6 +527,7 @@
         });
       });
 
+      // กรองข้อมูลตารางสถิติ
       document.getElementById('stats-search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll('#usage-stats-body tr').forEach(row => {
@@ -960,64 +961,25 @@
         });
     }
 
-    /* ระบบค้นหากล้องและเปิดกล้องหลังอัตโนมัติ */
     function startScanner() {
-      if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("reader");
-      }
+      html5QrCode = new Html5Qrcode("reader");
+      
+      const screenWidth = window.innerWidth;
+      const boxSize = screenWidth < 600 ? 250 : 300; 
 
-      const config = { 
-        fps: 30, 
-        disableFlip: false, // ปิดการกลับภาพ (กล้องหลังไม่ต้องกลับซ้ายขวา)
-        videoConstraints: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
-      };
-
-      // เปลี่ยนวิธี: ขอรายชื่อกล้องทั้งหมดฮาร์ดแวร์ "ก่อน" เปิด
-      Html5Qrcode.getCameras().then(devices => {
-        if (devices && devices.length > 0) {
-          
-          // 1. พยายามหากล้องที่มีคำระบุว่าเป็นกล้องหลัง
-          let backCamera = devices.find(c => 
-            c.label.toLowerCase().includes('back') || 
-            c.label.toLowerCase().includes('rear') || 
-            c.label.toLowerCase().includes('environment') ||
-            c.label.toLowerCase().includes('หลัง')
-          );
-
-          // 2. ถ้าหาชื่อไม่เจอจริงๆ บังคับเลือกกล้องตัวที่ 2 หรือตัวสุดท้ายแทน
-          if (!backCamera) {
-            backCamera = devices.length > 1 ? devices[devices.length - 1] : devices[0];
-          }
-
-          // สั่งเปิดกล้องจาก Device ID ของกล้องหลังแบบเจาะจง!
-          html5QrCode.start(backCamera.id, config, onScanSuccess, onScanFailure)
-          .catch(e => {
-              console.warn("เปิดจาก ID ไม่สำเร็จ กำลังลองวิธีที่ 2...", e);
-              // Fallback 1: บังคับกล้องหลังด้วยคำสั่ง Exact
-              html5QrCode.start({ facingMode: { exact: "environment" } }, config, onScanSuccess, onScanFailure)
-              .catch(err2 => {
-                  // Fallback 2: วิธีทั่วไป
-                  html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure);
-              });
-          });
-        } else {
-           showAlert("ไม่พบกล้องในอุปกรณ์นี้", "error");
-           document.getElementById('qr-modal').style.display = "none";
-        }
-      }).catch(err => {
-        console.error("ดึงข้อมูลฮาร์ดแวร์ไม่ได้ จะลองบังคับเปิดกล้องหลังแบบ Exact...", err);
-        // ถ้าระบบบล็อกไม่ให้อ่านรายชื่อกล้อง ให้บังคับเปิดกล้องหลังขั้นสูงสุด
-        html5QrCode.start({ facingMode: { exact: "environment" } }, config, onScanSuccess, onScanFailure)
-        .catch(e => {
-            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
-            .catch(e2 => {
-               showAlert("ไม่สามารถเข้าถึงกล้องได้ กรุณาตรวจสอบการตั้งค่า", "error");
-               document.getElementById('qr-modal').style.display = "none";
-            });
-        });
+      html5QrCode.start(
+        { facingMode: "environment" }, 
+        { 
+          fps: 15, 
+          qrbox: { width: boxSize, height: boxSize },
+          disableFlip: false
+        }, 
+        onScanSuccess, 
+        onScanFailure
+      ).catch((err) => { 
+        console.error(err);
+        showAlert("กรุณาให้สิทธิ์เข้าถึงกล้องถ่ายรูป", "error"); 
+        document.getElementById('qr-modal').style.display = "none";
       });
     }
 
@@ -1044,6 +1006,7 @@
       stopScanner();
       const scannedId = decodedText.trim();
       
+      // ค้นหาแบบ Exact Match
       const item = window.allItems.find(i => String(i.id) === scannedId || i.name.toLowerCase() === scannedId.toLowerCase());
       
       if (item) {
@@ -1051,11 +1014,12 @@
          const searchInput = document.getElementById('search-input'); 
          searchInput.value = item.name; 
          
+         // กรองแสดงการ์ดโดยอิงจาก ID ให้ตรงเป๊ะ
          document.querySelectorAll('.item-card').forEach(card => {
             if (card.dataset.id == item.id) {
-                card.style.display = 'flex';
+                card.style.display = 'flex'; // แสดงแค่อันที่สแกนเจอ
             } else {
-                card.style.display = 'none';
+                card.style.display = 'none'; // ซ่อนอันอื่นๆ ทั้งหมด
             }
          });
 
