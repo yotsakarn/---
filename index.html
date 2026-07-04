@@ -964,14 +964,10 @@
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
       
-      const screenWidth = window.innerWidth;
-      const boxSize = screenWidth < 600 ? 250 : 300; 
-
       html5QrCode.start(
         { facingMode: "environment" }, 
         { 
           fps: 15, 
-          qrbox: { width: boxSize, height: boxSize },
           disableFlip: false
         }, 
         onScanSuccess, 
