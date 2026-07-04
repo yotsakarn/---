@@ -10,6 +10,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
 
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -136,75 +143,6 @@
     .stat-card { background-color: var(--white); padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
-
-    /* =========================================
-       สไตล์สำหรับกล้องสแกน QR Code แบบ LINE (เต็มจอ)
-       ========================================= */
-    .qr-fullscreen-container {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
-      background: #000; z-index: 10005;
-      display: none; flex-direction: column;
-    }
-    
-    .qr-top-bar {
-      position: absolute; top: 0; left: 0; width: 100%;
-      padding: 15px 20px; z-index: 10010;
-      display: flex; justify-content: flex-start;
-    }
-    
-    .qr-top-bar .close-qr-btn {
-      color: #fff; background: rgba(0,0,0,0.4);
-      width: 40px; height: 40px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 24px; font-weight: bold; cursor: pointer;
-    }
-    
-    #reader-wrapper {
-      flex-grow: 1; position: relative; width: 100%;
-      overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
-      background: #000;
-    }
-    
-    #reader { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none !important; }
-    #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
-    
-    /* ปุ่มลอยด้านล่างกล้อง (จำลอง) */
-    .qr-floating-actions {
-      position: relative; z-index: 10010;
-      display: flex; justify-content: center; align-items: center; gap: 15px;
-      margin-bottom: 25px;
-    }
-    .qr-action-btn {
-      background: rgba(0,0,0,0.6); color: white;
-      padding: 8px 20px; border-radius: 20px; font-size: 14px;
-    }
-    .qr-gallery-btn {
-      background: rgba(0,0,0,0.6); color: white;
-      width: 40px; height: 40px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center; font-size: 20px;
-    }
-    
-    /* แผงเมนูสีขาวด้านล่าง */
-    .qr-bottom-panel {
-      background: #fff; border-radius: 24px 24px 0 0;
-      padding: 25px 20px 15px 20px; z-index: 10010;
-      text-align: center;
-      padding-bottom: env(safe-area-inset-bottom, 20px);
-    }
-    
-    .qr-bottom-panel p {
-      color: #333; font-size: 14px; margin-top: 0; margin-bottom: 25px; line-height: 1.5;
-    }
-    
-    .qr-tabs { display: flex; justify-content: center; gap: 40px; }
-    
-    .qr-tab {
-      font-size: 16px; color: #888; padding-bottom: 12px; position: relative; cursor: pointer;
-    }
-    .qr-tab.active { color: #000; font-weight: bold; }
-    .qr-tab.active::after {
-      content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: #000; border-radius: 2px;
-    }
     
     @media (max-width: 768px) {
       body, button, input, textarea, select { font-size: 14px; }
@@ -222,20 +160,54 @@
       .item-card p { font-size: 0.8em; height: auto; margin-bottom: 8px; }
 
       #return-view table th:first-child,
-      #return-view table td:first-child { width: 60px !important; padding: 4px !important; }
-      .return-toggle-btn { font-size: 11px !important; padding: 4px 6px !important; white-space: nowrap; }
-      #return-view table th, #return-view table td { font-size: 13px !important; padding: 6px 4px !important; }
-      .qty-input-group input { width: 40px !important; font-size: 13px !important; }
-      #return-view table th:nth-child(2), #return-view table td:nth-child(2) { display: none !important; }
+      #return-view table td:first-child {
+        width: 60px !important;
+        padding: 4px !important;
+      }
+      .return-toggle-btn {
+        font-size: 11px !important;
+        padding: 4px 6px !important;
+        white-space: nowrap;
+      }
+      #return-view table th, 
+      #return-view table td {
+        font-size: 13px !important;
+        padding: 6px 4px !important;
+      }
+      .qty-input-group input {
+        width: 40px !important;
+        font-size: 13px !important;
+      }
+      
+      #return-view table th:nth-child(2),
+      #return-view table td:nth-child(2) {
+        display: none !important;
+      }
+    }
+
+    /* --- ปรับแต่ง UI กล้องสแกนให้เหมือนแอป LINE --- */
+    #qr-modal .modal-content {
+      width: 95%;
+      padding: 15px;
+      border-radius: 16px;
+      margin: 5% auto;
+    }
+    
+    #reader {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      border: none !important;
+    }
+    
+    #reader video {
+      object-fit: cover !important;
+      border-radius: 12px;
+      transform: scale(1.02);
     }
   </style>
 </head>
 <body>
-  <!-- ระบบเสียง Beep เวลาสแกนติด -->
-  <audio id="beep-sound" preload="auto">
-    <source src="https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3" type="audio/mpeg">
-  </audio>
-
   <div id="loader" style="display: none;"><div class="spinner"></div></div>
   
   <div class="sticky-header">
@@ -342,28 +314,10 @@
     <div id="cart-footer"><button id="borrow-btn" class="btn btn-primary" style="width: 100%;">ดำเนินการยืม</button></div>
   </div>
   
-  <!-- เปลี่ยน Modal QR Code เดิม เป็นแบบ Fullscreen สไตล์ LINE -->
-  <div id="qr-modal" class="qr-fullscreen-container">
-    <div class="qr-top-bar">
-      <span class="close-qr-btn" id="close-qr-btn">✕</span>
-    </div>
-    
-    <div id="reader-wrapper">
+  <div id="qr-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><h2>สแกนรหัสอุปกรณ์</h2><span class="close-btn" id="close-qr-btn">×</span></div>
       <div id="reader"></div>
-      
-      <!-- ปุ่มจำลองด้านบนแผงสีขาว -->
-      <div class="qr-floating-actions">
-         <div class="qr-action-btn"><span style="margin-right:5px;">❖</span> คิวอาร์โค้ดของฉัน</div>
-         <div class="qr-gallery-btn">🖼️</div>
-      </div>
-    </div>
-    
-    <div class="qr-bottom-panel">
-      <p>คุณสามารถสแกนคิวอาร์โค้ดเพื่อเข้าถึงบริการต่างๆ เช่น การยืมและค้นหาอุปกรณ์</p>
-      <div class="qr-tabs">
-        <div class="qr-tab active">สแกนคิวอาร์โค้ด</div>
-        <div class="qr-tab">สแกนข้อความ</div>
-      </div>
     </div>
   </div>
   
@@ -598,15 +552,8 @@
           }
       });
 
-      // ปุ่มเปิดสแกน QR แบบใหม่
-      document.getElementById('scan-qr-btn').addEventListener('click', () => { 
-        document.getElementById('qr-modal').style.display = "flex"; 
-        startScanner(); 
-      });
-      // ปุ่มปิดสแกน QR แบบใหม่
-      document.getElementById('close-qr-btn').addEventListener('click', () => { 
-        stopScanner(); 
-      });
+      document.getElementById('scan-qr-btn').addEventListener('click', () => { showModal('qr-modal'); startScanner(); });
+      document.getElementById('close-qr-btn').addEventListener('click', () => { stopScanner(); });
     }
 
     function showView(viewId) {
@@ -762,7 +709,13 @@
           if (!isSingle) { 
             goodInput.readOnly = false; 
             consumedInput.readOnly = false; 
-            if (window.innerWidth <= 768) { setTimeout(() => { goodInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100); }
+            
+            if (window.innerWidth <= 768) {
+                setTimeout(() => {
+                    goodInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            }
+
           } else { 
             goodInput.value = 1; 
             consumedInput.value = 0; 
@@ -790,9 +743,13 @@
       document.getElementById('return-count').textContent = selectedCount;
       
       if (selectedCount === 0) {
-        btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; 
+        btn.disabled = true; 
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed'; 
       } else {
-        btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; 
+        btn.disabled = false; 
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer'; 
       }
     }
 
@@ -896,19 +853,25 @@
       const fileName = searchInput ? `ประวัติยืมคืน_${searchInput}.pdf` : 'ประวัติยืมคืนทั้งหมด.pdf';
       
       const opt = { 
-        margin: [10, 10, 10, 10], filename: fileName, image: { type: 'jpeg', quality: 0.95 }, 
+        margin: [10, 10, 10, 10], 
+        filename: fileName, 
+        image: { type: 'jpeg', quality: 0.95 }, 
         html2canvas: { scale: 1.5, useCORS: true, logging: false, letterRendering: true, scrollY: 0, scrollX: 0 }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
       };
 
       setTimeout(() => {
         html2pdf().set(opt).from(tableContainer).save().then(() => {
-          tableContainer.style.maxHeight = originalMaxHeight; tableContainer.style.overflow = originalOverflow;
-          hideLoader(); showAlert('ดาวน์โหลดประวัติสำเร็จ!');
+          tableContainer.style.maxHeight = originalMaxHeight; 
+          tableContainer.style.overflow = originalOverflow;
+          hideLoader(); 
+          showAlert('ดาวน์โหลดประวัติสำเร็จ!');
         }).catch(err => {
           console.error("PDF Export Error:", err);
-          tableContainer.style.maxHeight = originalMaxHeight; tableContainer.style.overflow = originalOverflow;
-          hideLoader(); showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
+          tableContainer.style.maxHeight = originalMaxHeight; 
+          tableContainer.style.overflow = originalOverflow;
+          hideLoader(); 
+          showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
         });
       }, 300);
     }
@@ -956,32 +919,16 @@
       ).catch((err) => { 
         console.error(err);
         showAlert("กรุณาให้สิทธิ์เข้าถึงกล้องถ่ายรูป", "error"); 
-        document.getElementById('qr-modal').style.display = "none";
+        hideModal('qr-modal'); 
       });
     }
 
     function stopScanner() { 
-      if (html5QrCode) { 
-        html5QrCode.stop().then(() => { html5QrCode.clear(); html5QrCode = null; }).catch(e => console.log("Scanner stop error:", e)); 
-      } 
-      document.getElementById('qr-modal').style.display = "none";
-    }
-
-    function playScanAlert() {
-      // เล่นเสียง Beep
-      const sound = document.getElementById('beep-sound');
-      if (sound) {
-        sound.currentTime = 0;
-        sound.play().catch(err => console.log("Sound autoplay prevented:", err));
-      }
-      // สั่นมือถือ (สั่นสั้นๆ 1 ครั้ง 150ms)
-      if (navigator.vibrate) {
-        navigator.vibrate(150);
-      }
+      if (html5QrCode) { html5QrCode.stop().then(() => { html5QrCode.clear(); html5QrCode = null; }).catch(e => console.log("Scanner stop error:", e)); } 
+      hideModal('qr-modal'); 
     }
 
     function onScanSuccess(decodedText) {
-      playScanAlert();
       stopScanner();
       const scannedId = decodedText.trim();
       const item = window.allItems.find(i => i.id == scannedId || i.name.toLowerCase() == scannedId.toLowerCase());
