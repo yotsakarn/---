@@ -138,7 +138,7 @@
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
 
     /* =========================================
-       สไตล์สำหรับกล้องสแกน QR Code แบบ LINE (เต็มจอ)
+       สไตล์สำหรับกล้องสแกน QR Code แบบเต็มจอ
        ========================================= */
     .qr-fullscreen-container {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
@@ -488,12 +488,10 @@
         }
       });
 
-      // --- ส่วนที่แก้ไขเรื่องการค้นหา เริ่มต้นที่นี่ ---
       document.getElementById('search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase().trim();
         const cards = document.querySelectorAll('.item-card');
         
-        // 1. เช็คก่อนว่ามีอุปกรณ์ที่ชื่อตรงกันแบบเป๊ะๆ 100% หรือไม่ (เช่น จากการนำค่าสแกน QR มาใส่)
         let hasExactMatch = false;
         cards.forEach(card => {
           const title = card.querySelector('h3').textContent.toLowerCase().trim();
@@ -502,21 +500,17 @@
           }
         });
 
-        // 2. ทำการกรองข้อมูลเพื่อแสดงผล
         cards.forEach(card => {
           const title = card.querySelector('h3').textContent.toLowerCase();
           const desc = card.querySelector('p').textContent.toLowerCase();
           
           if (hasExactMatch) {
-            // กรณีสแกน QR หรือพิมพ์ชื่อตรงเป๊ะ -> โชว์เฉพาะชิ้นนั้นชิ้นเดียว (ป้องกัน 1 ไปดึง 11, 21 มา)
             card.style.display = (title.trim() === searchTerm) ? 'flex' : 'none';
           } else {
-            // กรณีพิมพ์ค้นหาปกติแบบกว้างๆ -> โชว์ทั้งหมดที่มีคำนั้นผสมอยู่ (ค้นหาจากทั้งชื่อและรายละเอียด)
             card.style.display = (title.includes(searchTerm) || desc.includes(searchTerm)) ? 'flex' : 'none';
           }
         });
       });
-      // --- ส่วนที่แก้ไขเรื่องการค้นหา สิ้นสุดที่นี่ ---
 
       document.getElementById('return-search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
@@ -616,12 +610,10 @@
           }
       });
 
-      // ปุ่มเปิดสแกน QR แบบใหม่
       document.getElementById('scan-qr-btn').addEventListener('click', () => { 
         document.getElementById('qr-modal').style.display = "flex"; 
         startScanner(); 
       });
-      // ปุ่มปิดสแกน QR แบบใหม่
       document.getElementById('close-qr-btn').addEventListener('click', () => { 
         stopScanner(); 
       });
@@ -957,30 +949,31 @@
     }
 
     function startScanner() {
-      // 1. เปิดใช้ Native Barcode Detector API (สแกนไวขึ้นมากในมือถือ/เบราว์เซอร์ที่รองรับ)
+      // 1. ระบุให้ระบบประมวลผลเฉพาะ QR Code เท่านั้น (ปิด Barcode อื่นๆ)
       html5QrCode = new Html5Qrcode("reader", {
+        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ],
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true
         }
       });
       
       const screenWidth = window.innerWidth;
-      // 2. ปรับขนาดกล่องสแกน (qrbox) ให้สัมพันธ์กับขนาดหน้าจอ ลดปัญหาตีกรอบใหญ่เกินไปจนล้นขอบจอ
-      const boxSize = screenWidth < 600 ? Math.floor(screenWidth * 0.75) : 300; 
+      
+      // 2. สร้างกรอบสแกนเป็น "แนวตั้ง"
+      const boxWidth = screenWidth < 600 ? Math.floor(screenWidth * 0.75) : 300; 
+      const boxHeight = Math.floor(boxWidth * 1.5); 
 
       html5QrCode.start(
-        // 3. กำหนดให้ใช้กล้องหลัง และขอความละเอียดที่ชัดเจนขึ้น (HD)
         { 
           facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          advanced: [{ focusMode: "continuous" }] // บังคับออโต้โฟกัส (รองรับในบางอุปกรณ์)
+          // 3. ดันความละเอียดกล้องเป็นระดับ Full HD (1080p)
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          advanced: [{ focusMode: "continuous" }] 
         }, 
         { 
-          // 4. ลด FPS ลงเหลือ 10 เพื่อให้กล้องมีเวลาเปิดรับแสงมากขึ้น ภาพจะชัดและเบลอน้อยลง
-          fps: 10, 
-          qrbox: { width: boxSize, height: boxSize },
-          // ลบ aspectRatio ออกไป เพื่อให้ภาพคงสัดส่วนกล้องตามธรรมชาติ ไม่โดนยืดหรือบีบ
+          fps: 15,
+          qrbox: { width: boxWidth, height: boxHeight },
         }, 
         onScanSuccess, 
         onScanFailure
