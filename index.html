@@ -490,7 +490,7 @@
         showModal('manage-items-modal');
       });
 
-      // แก้ไข: เพิ่ม stats-search-input เข้าไปในตัวแปรเพื่อกันการกด Enter แล้วโหลดหน้าใหม่
+      // ป้องกันการกด Enter แล้วโหลดหน้าใหม่
       const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input', 'stats-search-input'];
       allSearchInputs.forEach(id => {
         const inputBox = document.getElementById(id);
@@ -527,7 +527,7 @@
         });
       });
 
-      // แก้ไข: เพิ่ม Event Listener สำหรับกรองข้อมูลตารางสถิติ
+      // กรองข้อมูลตารางสถิติ
       document.getElementById('stats-search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll('#usage-stats-body tr').forEach(row => {
@@ -672,7 +672,7 @@
             : `<input type="number" id="card-qty-${item.id}" value="${currentSelectedQty}" min="1" max="${item.availableQuantity}" style="width:45px; text-align:center;" ${item.availableQuantity <= 0 ? 'disabled' : ''} onchange="updateCardQtyIfInCart(${item.id}, ${item.availableQuantity})">`;
 
         htmlString += `
-          <div class="item-card">
+          <div class="item-card" data-id="${item.id}">
             <img src="${item.image}" loading="lazy">
             <div class="item-card-content">
               <h3>${item.name}</h3>
@@ -875,7 +875,6 @@
       const element = document.getElementById('usage-stats-container');
       const tableContainer = element.querySelector('.table-container');
       
-      // เลือกปุ่มและช่องค้นหาเพื่อซ่อนเวลาโหลด PDF
       const actionDiv = element.querySelector('div[style*="display: flex; gap: 10px"]'); 
       const originalMaxHeight = tableContainer.style.maxHeight;
       const originalOverflow = tableContainer.style.overflow;
@@ -1006,13 +1005,32 @@
       playScanAlert();
       stopScanner();
       const scannedId = decodedText.trim();
-      const item = window.allItems.find(i => i.id == scannedId || i.name.toLowerCase() == scannedId.toLowerCase());
+      
+      // ค้นหาแบบ Exact Match
+      const item = window.allItems.find(i => String(i.id) === scannedId || i.name.toLowerCase() === scannedId.toLowerCase());
+      
       if (item) {
          showView('items-view');
-         const searchInput = document.getElementById('search-input'); searchInput.value = item.name; searchInput.dispatchEvent(new Event('input'));
-         if (item.availableQuantity > 0) { showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success'); } 
-         else { showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning'); }
-      } else { showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error'); }
+         const searchInput = document.getElementById('search-input'); 
+         searchInput.value = item.name; 
+         
+         // กรองแสดงการ์ดโดยอิงจาก ID ให้ตรงเป๊ะ
+         document.querySelectorAll('.item-card').forEach(card => {
+            if (card.dataset.id == item.id) {
+                card.style.display = 'flex'; // แสดงแค่อันที่สแกนเจอ
+            } else {
+                card.style.display = 'none'; // ซ่อนอันอื่นๆ ทั้งหมด
+            }
+         });
+
+         if (item.availableQuantity > 0) { 
+             showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success'); 
+         } else { 
+             showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning'); 
+         }
+      } else { 
+         showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error'); 
+      }
     }
     
     function onScanFailure() {}
