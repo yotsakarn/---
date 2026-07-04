@@ -175,7 +175,6 @@
       border: none !important;
     }
     
-    /* แก้ไขตรงนี้: ให้กล้องเต็มจอแบบ cover */
     #reader video { 
       width: 100% !important; 
       height: 100% !important; 
@@ -961,26 +960,52 @@
         });
     }
 
-    /* แก้ไขฟังก์ชันกล้องตรงนี้: เอา qrbox ออก และปรับให้ดึงภาพกว้างสุด */
+    /* ระบบค้นหากล้องและเปิดกล้องหลังอัตโนมัติ */
     function startScanner() {
-      html5QrCode = new Html5Qrcode("reader");
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader");
+      }
 
-      html5QrCode.start(
-        { facingMode: "environment" }, 
-        { 
-          fps: 30, // เพิ่มเฟรมเรตเพื่อให้กล้องลื่นไหลขึ้น
-          disableFlip: false,
-          videoConstraints: {
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
+      const config = { 
+        fps: 30, 
+        disableFlip: false,
+        videoConstraints: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      };
+
+      // 1. ลองเปิดกล้องหลังด้วยวิธีมาตรฐานก่อน
+      html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+      .catch((err) => { 
+        console.warn("ไม่สามารถเปิดกล้องด้วยวิธีปกติได้ กำลังลองค้นหากล้องในเครื่อง...", err);
+        
+        // 2. ถ้าวิธีแรกไม่สำเร็จ ให้ดึงรายชื่อกล้องทั้งหมดในเครื่องมาเลือกเอง
+        Html5Qrcode.getCameras().then(devices => {
+          if (devices && devices.length > 0) {
+            // พยายามหากล้องที่มีคำว่า 'back' หรือ 'rear' ถ้าหาไม่เจอให้เลือกกล้องตัวสุดท้าย (มักจะเป็นกล้องหลังบนมือถือ)
+            let backCamera = devices.find(c => 
+              c.label.toLowerCase().includes('back') || 
+              c.label.toLowerCase().includes('rear') || 
+              c.label.toLowerCase().includes('หลัง')
+            ) || devices[devices.length - 1];
+            
+            // สั่งเปิดกล้องจาก ID กล้องหลังที่หาเจอ
+            html5QrCode.start(backCamera.id, config, onScanSuccess, onScanFailure)
+            .catch(e => {
+                console.error("เปิดกล้องไม่ได้:", e);
+                showAlert("กรุณาอนุญาตให้เว็บไซต์เข้าถึงกล้องถ่ายรูป", "error"); 
+                document.getElementById('qr-modal').style.display = "none";
+            });
+          } else {
+             showAlert("ไม่พบกล้องในอุปกรณ์นี้", "error");
+             document.getElementById('qr-modal').style.display = "none";
           }
-        }, 
-        onScanSuccess, 
-        onScanFailure
-      ).catch((err) => { 
-        console.error(err);
-        showAlert("กรุณาให้สิทธิ์เข้าถึงกล้องถ่ายรูป", "error"); 
-        document.getElementById('qr-modal').style.display = "none";
+        }).catch(camErr => {
+           console.error("ดึงข้อมูลฮาร์ดแวร์กล้องไม่ได้:", camErr);
+           showAlert("ไม่สามารถเข้าถึงกล้องได้ กรุณาตรวจสอบการตั้งค่าสิทธิ์", "error"); 
+           document.getElementById('qr-modal').style.display = "none";
+        });
       });
     }
 
