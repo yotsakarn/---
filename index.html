@@ -968,43 +968,55 @@
 
       const config = { 
         fps: 30, 
-        disableFlip: false,
+        disableFlip: false, // ปิดการกลับภาพ (กล้องหลังไม่ต้องกลับซ้ายขวา)
         videoConstraints: {
           width: { ideal: 1920 },
           height: { ideal: 1080 }
         }
       };
 
-      // 1. ลองเปิดกล้องหลังด้วยวิธีมาตรฐานก่อน
-      html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
-      .catch((err) => { 
-        console.warn("ไม่สามารถเปิดกล้องด้วยวิธีปกติได้ กำลังลองค้นหากล้องในเครื่อง...", err);
-        
-        // 2. ถ้าวิธีแรกไม่สำเร็จ ให้ดึงรายชื่อกล้องทั้งหมดในเครื่องมาเลือกเอง
-        Html5Qrcode.getCameras().then(devices => {
-          if (devices && devices.length > 0) {
-            // พยายามหากล้องที่มีคำว่า 'back' หรือ 'rear' ถ้าหาไม่เจอให้เลือกกล้องตัวสุดท้าย (มักจะเป็นกล้องหลังบนมือถือ)
-            let backCamera = devices.find(c => 
-              c.label.toLowerCase().includes('back') || 
-              c.label.toLowerCase().includes('rear') || 
-              c.label.toLowerCase().includes('หลัง')
-            ) || devices[devices.length - 1];
-            
-            // สั่งเปิดกล้องจาก ID กล้องหลังที่หาเจอ
-            html5QrCode.start(backCamera.id, config, onScanSuccess, onScanFailure)
-            .catch(e => {
-                console.error("เปิดกล้องไม่ได้:", e);
-                showAlert("กรุณาอนุญาตให้เว็บไซต์เข้าถึงกล้องถ่ายรูป", "error"); 
-                document.getElementById('qr-modal').style.display = "none";
-            });
-          } else {
-             showAlert("ไม่พบกล้องในอุปกรณ์นี้", "error");
-             document.getElementById('qr-modal').style.display = "none";
+      // เปลี่ยนวิธี: ขอรายชื่อกล้องทั้งหมดฮาร์ดแวร์ "ก่อน" เปิด
+      Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length > 0) {
+          
+          // 1. พยายามหากล้องที่มีคำระบุว่าเป็นกล้องหลัง
+          let backCamera = devices.find(c => 
+            c.label.toLowerCase().includes('back') || 
+            c.label.toLowerCase().includes('rear') || 
+            c.label.toLowerCase().includes('environment') ||
+            c.label.toLowerCase().includes('หลัง')
+          );
+
+          // 2. ถ้าหาชื่อไม่เจอจริงๆ บังคับเลือกกล้องตัวที่ 2 หรือตัวสุดท้ายแทน
+          if (!backCamera) {
+            backCamera = devices.length > 1 ? devices[devices.length - 1] : devices[0];
           }
-        }).catch(camErr => {
-           console.error("ดึงข้อมูลฮาร์ดแวร์กล้องไม่ได้:", camErr);
-           showAlert("ไม่สามารถเข้าถึงกล้องได้ กรุณาตรวจสอบการตั้งค่าสิทธิ์", "error"); 
+
+          // สั่งเปิดกล้องจาก Device ID ของกล้องหลังแบบเจาะจง!
+          html5QrCode.start(backCamera.id, config, onScanSuccess, onScanFailure)
+          .catch(e => {
+              console.warn("เปิดจาก ID ไม่สำเร็จ กำลังลองวิธีที่ 2...", e);
+              // Fallback 1: บังคับกล้องหลังด้วยคำสั่ง Exact
+              html5QrCode.start({ facingMode: { exact: "environment" } }, config, onScanSuccess, onScanFailure)
+              .catch(err2 => {
+                  // Fallback 2: วิธีทั่วไป
+                  html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure);
+              });
+          });
+        } else {
+           showAlert("ไม่พบกล้องในอุปกรณ์นี้", "error");
            document.getElementById('qr-modal').style.display = "none";
+        }
+      }).catch(err => {
+        console.error("ดึงข้อมูลฮาร์ดแวร์ไม่ได้ จะลองบังคับเปิดกล้องหลังแบบ Exact...", err);
+        // ถ้าระบบบล็อกไม่ให้อ่านรายชื่อกล้อง ให้บังคับเปิดกล้องหลังขั้นสูงสุด
+        html5QrCode.start({ facingMode: { exact: "environment" } }, config, onScanSuccess, onScanFailure)
+        .catch(e => {
+            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+            .catch(e2 => {
+               showAlert("ไม่สามารถเข้าถึงกล้องได้ กรุณาตรวจสอบการตั้งค่า", "error");
+               document.getElementById('qr-modal').style.display = "none";
+            });
         });
       });
     }
