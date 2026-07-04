@@ -165,7 +165,6 @@
       background: #000;
     }
     
-    /* แก้ไขการแสดงผลกล้องให้ตรงสัดส่วน (ป้องกันสแกนหลุดกรอบ) */
     #reader { 
       width: 100%; 
       height: 100%; 
@@ -181,7 +180,6 @@
       object-fit: contain !important; 
     }
     
-    /* ปุ่มลอยด้านล่างกล้อง (จำลอง) */
     .qr-floating-actions {
       position: relative; z-index: 10010;
       display: flex; justify-content: center; align-items: center; gap: 15px;
@@ -197,7 +195,6 @@
       display: flex; align-items: center; justify-content: center; font-size: 20px;
     }
     
-    /* แผงเมนูสีขาวด้านล่าง */
     .qr-bottom-panel {
       background: #fff; border-radius: 24px 24px 0 0;
       padding: 25px 20px 15px 20px; z-index: 10010;
@@ -318,10 +315,14 @@
     <div id="stats-view" class="view">
       <h2 style="margin-top: 10px; font-size: 1.2em;">สถิติภาพรวม</h2>
       <div id="stats-grid"></div>
+      
       <div id="usage-stats-container" style="margin-top: 20px; background-color: var(--white); padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
           <h3 style="font-size: 1.1em; margin: 0; font-weight: bold; color: var(--text-color);">สถิติการใช้งานและยอดคงเหลือ (รายอุปกรณ์)</h3>
-          <button onclick="exportStatsToPDF()" class="btn btn-secondary" style="background-color: #ef4444; border: none; padding: 8px 16px;">📄 ดาวน์โหลด PDF</button>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <input type="text" id="stats-search-input" placeholder="ค้นหาชื่ออุปกรณ์..." style="padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; min-width: 180px;" inputmode="search" enterkeyhint="search">
+            <button onclick="exportStatsToPDF()" class="btn btn-secondary" style="background-color: #ef4444; border: none; padding: 8px 16px;">📄 ดาวน์โหลด PDF</button>
+          </div>
         </div>
         <div class="table-container" style="max-height: 400px; box-shadow: none; border: 1px solid #e5e7eb;">
           <table>
@@ -341,6 +342,7 @@
           </table>
         </div>
       </div>
+      
       <div id="charts-container" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; justify-content: space-around; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
           <div style="width: 100%; max-width: 350px; height: 300px;"><canvas id="statusPieChart"></canvas></div>
           <div style="width: 100%; max-width: 450px; height: 300px;"><canvas id="topItemsBarChart"></canvas></div>
@@ -488,7 +490,8 @@
         showModal('manage-items-modal');
       });
 
-      const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input'];
+      // แก้ไข: เพิ่ม stats-search-input เข้าไปในตัวแปรเพื่อกันการกด Enter แล้วโหลดหน้าใหม่
+      const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input', 'stats-search-input'];
       allSearchInputs.forEach(id => {
         const inputBox = document.getElementById(id);
         if (inputBox) {
@@ -520,6 +523,14 @@
       document.getElementById('history-search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll('#hist-body tr').forEach(row => {
+          row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+        });
+      });
+
+      // แก้ไข: เพิ่ม Event Listener สำหรับกรองข้อมูลตารางสถิติ
+      document.getElementById('stats-search-input').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('#usage-stats-body tr').forEach(row => {
           row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
         });
       });
@@ -608,12 +619,10 @@
           }
       });
 
-      // ปุ่มเปิดสแกน QR แบบใหม่
       document.getElementById('scan-qr-btn').addEventListener('click', () => { 
         document.getElementById('qr-modal').style.display = "flex"; 
         startScanner(); 
       });
-      // ปุ่มปิดสแกน QR แบบใหม่
       document.getElementById('close-qr-btn').addEventListener('click', () => { 
         stopScanner(); 
       });
@@ -865,15 +874,20 @@
       showLoader();
       const element = document.getElementById('usage-stats-container');
       const tableContainer = element.querySelector('.table-container');
-      const pdfBtn = element.querySelector('button');
+      
+      // เลือกปุ่มและช่องค้นหาเพื่อซ่อนเวลาโหลด PDF
+      const actionDiv = element.querySelector('div[style*="display: flex; gap: 10px"]'); 
       const originalMaxHeight = tableContainer.style.maxHeight;
       const originalOverflow = tableContainer.style.overflow;
       
-      if (pdfBtn) pdfBtn.style.visibility = 'hidden';
+      if (actionDiv) actionDiv.style.visibility = 'hidden';
       tableContainer.style.maxHeight = 'none'; tableContainer.style.overflow = 'visible';
       
+      const searchInput = document.getElementById('stats-search-input').value.trim();
+      const fileName = searchInput ? `สถิติอุปกรณ์_${searchInput}.pdf` : 'สถิติอุปกรณ์และยอดคงเหลือ.pdf';
+
       const opt = { 
-        margin: [10, 10, 10, 10], filename: 'สถิติอุปกรณ์และยอดคงเหลือ.pdf', image: { type: 'jpeg', quality: 0.95 }, 
+        margin: [10, 10, 10, 10], filename: fileName, image: { type: 'jpeg', quality: 0.95 }, 
         html2canvas: { scale: 1.5, useCORS: true, logging: false, letterRendering: true, scrollY: 0, scrollX: 0 }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
       };
@@ -881,12 +895,12 @@
       setTimeout(() => {
         html2pdf().set(opt).from(element).save().then(() => {
           tableContainer.style.maxHeight = originalMaxHeight; tableContainer.style.overflow = originalOverflow;
-          if (pdfBtn) pdfBtn.style.visibility = 'visible';
+          if (actionDiv) actionDiv.style.visibility = 'visible';
           hideLoader(); showAlert('ดาวน์โหลดสถิติสำเร็จ!');
         }).catch(err => {
           console.error("PDF Export Error:", err);
           tableContainer.style.maxHeight = originalMaxHeight; tableContainer.style.overflow = originalOverflow;
-          if (pdfBtn) pdfBtn.style.visibility = 'visible';
+          if (actionDiv) actionDiv.style.visibility = 'visible';
           hideLoader(); showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
         });
       }, 300);
