@@ -849,6 +849,7 @@
             <th style="background-color: #3b82f6; color: white;">ผู้ยืม</th>
             <th style="background-color: #8b5cf6; color: white;">ชื่ออุปกรณ์</th>
             <th style="background-color: #f59e0b; color: white; text-align: center;">จำนวนยืม</th>
+            <th style="background-color: #ec4899; color: white; text-align: center;">จำนวนที่คืน</th>
             <th style="background-color: #10b981; color: white;">วันที่ยืม</th>
             <th style="background-color: #6366f1; color: white; text-align: center;">สถานะ</th>
             <th style="background-color: #14b8a6; color: white;">วันที่คืนจริง</th>
@@ -858,13 +859,18 @@
       
       history.forEach(h => {
           let badge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
+          
+          // ตรวจสอบว่ามีการส่งค่า returnedQty มาหรือไม่ ถ้ายังไม่คืนหรือไม่มีข้อมูลให้แสดงเป็น "-"
+          let returnedAmount = (h.status !== 'borrowed' && h.returnedQty !== undefined) ? h.returnedQty : '-';
+
           html += `<tr>
             <td>${h.borrowerName}</td>
             <td>${h.itemName}</td>
             <td style="text-align: center;">${h.borrowQty}</td>
+            <td style="text-align: center; font-weight: bold; color: var(--success);">${returnedAmount}</td>
             <td>${h.borrowDate}</td>
             <td style="text-align: center;">${badge}</td>
-            <td>${h.actualReturnDate}</td>
+            <td>${h.actualReturnDate || '-'}</td>
           </tr>`;
       });
       container.innerHTML = html + `</tbody></table>`;
