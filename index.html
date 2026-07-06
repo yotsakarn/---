@@ -137,9 +137,6 @@
     .stat-card .value { font-size: 2em; font-weight: bold; color: var(--primary-color); }
     .stat-card .label { font-size: 0.85em; color: var(--dark-gray); }
 
-    /* =========================================
-       สไตล์สำหรับกล้องสแกน QR Code แบบ LINE (เต็มจอ)
-       ========================================= */
     .qr-fullscreen-container {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
       background: #000; z-index: 10005;
@@ -414,6 +411,7 @@
   </div>
 
   <script>
+    // ⚠️ อย่าลืมอัพเดตลิงก์นี้ถ้ามีการกดยอด Deployment ใหม่ใน Google Apps Script
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzNp3PG-2gADMw5WfFcwrQ0vAcwjnoBR4pzSwTBWrzZ8sgXz_m5f23T5oA-DhWVzRuwpA/exec";
 
     const AppDB = {
@@ -421,7 +419,7 @@
         try {
           const response = await fetch(WEB_APP_URL, { 
             method: "POST", 
-            redirect: "follow", // ✨ เพิ่มส่วนนี้เพื่อแก้ไขปัญหาเชื่อมต่อไม่สำเร็จบน GitHub
+            redirect: "follow", 
             body: JSON.stringify({ action, ...data }) 
           });
           return await response.json();
@@ -840,6 +838,7 @@
       myBarChart = new Chart(document.getElementById('topItemsBarChart').getContext('2d'), { type: 'bar', data: { labels: topItems.map(i => i.name), datasets: [{ label: 'จำนวนครั้งที่ถูกยืม', data: topItems.map(i => i.count), backgroundColor: '#3b82f6' }] }, options: { responsive: true, maintainAspectRatio: false } });
     }
 
+    // 🌟 หน้าแสดงตารางประวัติ (มีตัวแปรรองรับคอลัมน์ "จำนวนที่คืน")
     function renderHistoryTable() {
       const history = window.allStats.rawHistory;
       const container = document.getElementById('history-table-container');
@@ -851,8 +850,7 @@
             <th style="background-color: #3b82f6; color: white;">ผู้ยืม</th>
             <th style="background-color: #8b5cf6; color: white;">ชื่ออุปกรณ์</th>
             <th style="background-color: #f59e0b; color: white; text-align: center;">จำนวนยืม</th>
-            <th style="background-color: #ec4899; color: white; text-align: center;">จำนวนที่คืน</th>
-            <th style="background-color: #10b981; color: white;">วันที่ยืม</th>
+            <th style="background-color: #ec4899; color: white; text-align: center;">จำนวนที่คืน</th> <th style="background-color: #10b981; color: white;">วันที่ยืม</th>
             <th style="background-color: #6366f1; color: white; text-align: center;">สถานะ</th>
             <th style="background-color: #14b8a6; color: white;">วันที่คืนจริง</th>
           </tr>
@@ -862,14 +860,14 @@
       history.forEach(h => {
           let badge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
           
-          let returnedAmount = (h.status !== 'borrowed' && h.returnedQty !== undefined) ? h.returnedQty : '-';
+          // ดึงค่าจำนวนที่คืนมาแสดง ถ้าเป็นสถานะกำลังยืมหรือยังไม่มีค่าให้แสดงเครื่องหมาย -
+          let returnedAmount = (h.returnedQty !== undefined && h.returnedQty !== null && h.returnedQty !== '') ? h.returnedQty : '-';
 
           html += `<tr>
             <td>${h.borrowerName}</td>
             <td>${h.itemName}</td>
             <td style="text-align: center;">${h.borrowQty}</td>
-            <td style="text-align: center; font-weight: bold; color: var(--success);">${returnedAmount}</td>
-            <td>${h.borrowDate}</td>
+            <td style="text-align: center; font-weight: bold; color: var(--success);">${returnedAmount}</td> <td>${h.borrowDate}</td>
             <td style="text-align: center;">${badge}</td>
             <td>${h.actualReturnDate || '-'}</td>
           </tr>`;
@@ -970,13 +968,9 @@
 
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
-      
       html5QrCode.start(
         { facingMode: "environment" }, 
-        { 
-          fps: 15, 
-          disableFlip: false
-        }, 
+        { fps: 15, disableFlip: false }, 
         onScanSuccess, 
         onScanFailure
       ).catch((err) => { 
@@ -995,43 +989,27 @@
 
     function playScanAlert() {
       const sound = document.getElementById('beep-sound');
-      if (sound) {
-        sound.currentTime = 0;
-        sound.play().catch(err => console.log("Sound autoplay prevented:", err));
-      }
-      if (navigator.vibrate) {
-        navigator.vibrate(150);
-      }
+      if (sound) { sound.currentTime = 0; sound.play().catch(err => console.log("Sound autoplay prevented:", err)); }
+      if (navigator.vibrate) { navigator.vibrate(150); }
     }
 
     function onScanSuccess(decodedText) {
-      playScanAlert();
-      stopScanner();
+      playScanAlert(); stopScanner();
       const scannedId = decodedText.trim();
-      
       const item = window.allItems.find(i => String(i.id) === scannedId || i.name.toLowerCase() === scannedId.toLowerCase());
       
       if (item) {
          showView('items-view');
-         const searchInput = document.getElementById('search-input'); 
-         searchInput.value = item.name; 
-         
+         const searchInput = document.getElementById('search-input'); searchInput.value = item.name; 
          document.querySelectorAll('.item-card').forEach(card => {
-            if (card.dataset.id == item.id) {
-                card.style.display = 'flex'; 
-            } else {
-                card.style.display = 'none'; 
-            }
+            card.style.display = (card.dataset.id == item.id) ? 'flex' : 'none';
          });
-
          if (item.availableQuantity > 0) { 
              showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success'); 
          } else { 
              showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning'); 
          }
-      } else { 
-         showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error'); 
-      }
+      } else { showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error'); }
     }
     
     function onScanFailure() {}
