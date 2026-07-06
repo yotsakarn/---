@@ -419,7 +419,11 @@
     const AppDB = {
       async callAPI(action, data = {}) {
         try {
-          const response = await fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action, ...data }) });
+          const response = await fetch(WEB_APP_URL, { 
+            method: "POST", 
+            redirect: "follow", // ✨ เพิ่มส่วนนี้เพื่อแก้ไขปัญหาเชื่อมต่อไม่สำเร็จบน GitHub
+            body: JSON.stringify({ action, ...data }) 
+          });
           return await response.json();
         } catch (error) {
           console.error("API Connection Error:", error);
@@ -490,7 +494,6 @@
         showModal('manage-items-modal');
       });
 
-      // ป้องกันการกด Enter แล้วโหลดหน้าใหม่
       const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input', 'stats-search-input'];
       allSearchInputs.forEach(id => {
         const inputBox = document.getElementById(id);
@@ -527,7 +530,6 @@
         });
       });
 
-      // กรองข้อมูลตารางสถิติ
       document.getElementById('stats-search-input').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll('#usage-stats-body tr').forEach(row => {
@@ -860,7 +862,6 @@
       history.forEach(h => {
           let badge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
           
-          // ตรวจสอบว่ามีการส่งค่า returnedQty มาหรือไม่ ถ้ายังไม่คืนหรือไม่มีข้อมูลให้แสดงเป็น "-"
           let returnedAmount = (h.status !== 'borrowed' && h.returnedQty !== undefined) ? h.returnedQty : '-';
 
           html += `<tr>
@@ -1008,7 +1009,6 @@
       stopScanner();
       const scannedId = decodedText.trim();
       
-      // ค้นหาแบบ Exact Match
       const item = window.allItems.find(i => String(i.id) === scannedId || i.name.toLowerCase() === scannedId.toLowerCase());
       
       if (item) {
@@ -1016,12 +1016,11 @@
          const searchInput = document.getElementById('search-input'); 
          searchInput.value = item.name; 
          
-         // กรองแสดงการ์ดโดยอิงจาก ID ให้ตรงเป๊ะ
          document.querySelectorAll('.item-card').forEach(card => {
             if (card.dataset.id == item.id) {
-                card.style.display = 'flex'; // แสดงแค่อันที่สแกนเจอ
+                card.style.display = 'flex'; 
             } else {
-                card.style.display = 'none'; // ซ่อนอันอื่นๆ ทั้งหมด
+                card.style.display = 'none'; 
             }
          });
 
