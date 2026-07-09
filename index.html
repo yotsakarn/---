@@ -231,7 +231,6 @@
   </style>
 </head>
 <body>
-  <!-- ระบบเสียง Beep เวลาสแกนติด -->
   <audio id="beep-sound" preload="auto">
     <source src="https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3" type="audio/mpeg">
   </audio>
@@ -306,11 +305,17 @@
     <div id="stats-view" class="view">
       <h2 style="margin-top: 10px; font-size: 1.2em;">สถิติภาพรวม</h2>
       <div id="stats-grid"></div>
+      
       <div id="usage-stats-container" style="margin-top: 20px; background-color: var(--white); padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <h3 style="font-size: 1.1em; margin: 0; font-weight: bold; color: var(--text-color);">สถิติการใช้งานและยอดคงเหลือ (รายอุปกรณ์)</h3>
           <button onclick="exportStatsToPDF()" class="btn btn-secondary" style="background-color: #ef4444; border: none; padding: 8px 16px;">📄 ดาวน์โหลด PDF</button>
         </div>
+        
+        <div class="search-bar" style="position: static; margin-bottom: 10px; border-bottom: none; padding: 0;">
+          <input type="text" id="stats-search-input" placeholder="ค้นหาชื่ออุปกรณ์ในตารางสถิติ..." inputmode="search" enterkeyhint="search">
+        </div>
+
         <div class="table-container" style="max-height: 400px; box-shadow: none; border: 1px solid #e5e7eb;">
           <table>
             <thead>
@@ -329,6 +334,7 @@
           </table>
         </div>
       </div>
+      
       <div id="charts-container" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; justify-content: space-around; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
           <div style="width: 100%; max-width: 350px; height: 300px;"><canvas id="statusPieChart"></canvas></div>
           <div style="width: 100%; max-width: 450px; height: 300px;"><canvas id="topItemsBarChart"></canvas></div>
@@ -342,22 +348,17 @@
     <div id="cart-footer"><button id="borrow-btn" class="btn btn-primary" style="width: 100%;">ดำเนินการยืม</button></div>
   </div>
   
-  <!-- เปลี่ยน Modal QR Code เดิม เป็นแบบ Fullscreen สไตล์ LINE -->
   <div id="qr-modal" class="qr-fullscreen-container">
     <div class="qr-top-bar">
       <span class="close-qr-btn" id="close-qr-btn">✕</span>
     </div>
-    
     <div id="reader-wrapper">
       <div id="reader"></div>
-      
-      <!-- ปุ่มจำลองด้านบนแผงสีขาว -->
       <div class="qr-floating-actions">
          <div class="qr-action-btn"><span style="margin-right:5px;">❖</span> คิวอาร์โค้ดของฉัน</div>
          <div class="qr-gallery-btn">🖼️</div>
       </div>
     </div>
-    
     <div class="qr-bottom-panel">
       <p>คุณสามารถสแกนคิวอาร์โค้ดเพื่อเข้าถึงบริการต่างๆ เช่น การยืมและค้นหาอุปกรณ์</p>
       <div class="qr-tabs">
@@ -402,6 +403,7 @@
   </div>
 
   <script>
+    // ********* ใส่ URL Apps Script ของคุณตรงนี้ *********
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzNp3PG-2gADMw5WfFcwrQ0vAcwjnoBR4pzSwTBWrzZ8sgXz_m5f23T5oA-DhWVzRuwpA/exec";
 
     const AppDB = {
@@ -478,7 +480,8 @@
         showModal('manage-items-modal');
       });
 
-      const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input'];
+      // รวม stats-search-input เข้าไปด้วย
+      const allSearchInputs = ['search-input', 'return-search-input', 'history-search-input', 'stats-search-input'];
       allSearchInputs.forEach(id => {
         const inputBox = document.getElementById(id);
         if (inputBox) {
@@ -514,17 +517,29 @@
         });
       });
 
+      // ระบบค้นหาตารางสถิติใหม่
+      document.getElementById('stats-search-input').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('#usage-stats-body tr').forEach(row => {
+          row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+        });
+      });
+
       document.getElementById('cart-toggle-btn').addEventListener('click', () => { document.getElementById('cart-container').classList.add('open'); });
       document.getElementById('cart-close-btn').addEventListener('click', () => { document.getElementById('cart-container').classList.remove('open'); });
 
       document.getElementById('borrow-btn').addEventListener('click', () => {
-        document.getElementById('cart-container').classList.remove('open'); document.getElementById('borrow-form').reset();
-        const now = new Date(); document.getElementById('borrow-date-display').value = now.toLocaleString('th-TH');
-        document.getElementById('return-date').setAttribute('min', now.toISOString().split('T')[0]); showModal('borrow-modal');
+        document.getElementById('cart-container').classList.remove('open'); 
+        document.getElementById('borrow-form').reset();
+        const now = new Date(); 
+        document.getElementById('borrow-date-display').value = now.toLocaleString('th-TH');
+        document.getElementById('return-date').setAttribute('min', now.toISOString().split('T')[0]); 
+        showModal('borrow-modal');
       });
 
       document.getElementById('borrow-form').addEventListener('submit', async (e) => {
-        e.preventDefault(); showLoader();
+        e.preventDefault(); 
+        showLoader();
         const payload = { 
           borrowerName: document.getElementById('borrower-name').value, 
           borrowDate: document.getElementById('borrow-date-display').value,
@@ -543,8 +558,16 @@
       });
 
       document.getElementById('return-selected-btn').addEventListener('click', () => {
-        const selectedBtns = document.querySelectorAll('.return-toggle-btn[data-selected="true"]'); if(selectedBtns.length === 0) return;
-        Swal.fire({ title: 'ระบุชื่อ-นามสกุลผู้คืน', input: 'text', showCancelButton: true, confirmButtonText: 'ยืนยันคืน', inputValidator: (v) => { if (!v) return 'กรุณาระบุชื่อ!' } }).then(async (result) => {
+        const selectedBtns = document.querySelectorAll('.return-toggle-btn[data-selected="true"]'); 
+        if(selectedBtns.length === 0) return;
+        
+        Swal.fire({ 
+            title: 'ระบุชื่อ-นามสกุลผู้คืน', 
+            input: 'text', 
+            showCancelButton: true, 
+            confirmButtonText: 'ยืนยันคืน', 
+            inputValidator: (v) => { if (!v) return 'กรุณาระบุชื่อ!' } 
+        }).then(async (result) => {
           if (result.isConfirmed) {
             const now = new Date().toLocaleString('th-TH');
             const returnPayload = { returnerName: result.value, returnDate: now, items: [] };
@@ -578,32 +601,53 @@
       });
 
       document.getElementById('open-add-new-item-form').addEventListener('click', () => {
-           document.getElementById('item-form').reset(); document.getElementById('item-id').value = ''; document.getElementById('image-preview').style.display = 'none'; document.getElementById('item-image-base64').value = ''; hideModal('manage-items-modal'); showModal('item-form-modal');
+           document.getElementById('item-form').reset(); 
+           document.getElementById('item-id').value = ''; 
+           document.getElementById('image-preview').style.display = 'none'; 
+           document.getElementById('item-image-base64').value = ''; 
+           hideModal('manage-items-modal'); 
+           showModal('item-form-modal');
       });
 
       document.getElementById('item-image-upload').addEventListener('change', function(e) {
-          const file = e.target.files[0]; if (!file || file.size > 250 * 1024) { showAlert('ขนาดไฟล์ห้ามเกิน 250KB', 'warning'); return; }
-          const r = new FileReader(); r.onload = function(ev) { document.getElementById('item-image-base64').value = ev.target.result; document.getElementById('image-preview').src = ev.target.result; document.getElementById('image-preview').style.display = 'block'; }; r.readAsDataURL(file);
+          const file = e.target.files[0]; 
+          if (!file || file.size > 250 * 1024) { showAlert('ขนาดไฟล์ห้ามเกิน 250KB', 'warning'); return; }
+          const r = new FileReader(); 
+          r.onload = function(ev) { 
+              document.getElementById('item-image-base64').value = ev.target.result; 
+              document.getElementById('image-preview').src = ev.target.result; 
+              document.getElementById('image-preview').style.display = 'block'; 
+          }; 
+          r.readAsDataURL(file);
       });
 
       document.getElementById('item-form').addEventListener('submit', async function(e) {
-          e.preventDefault(); const id = document.getElementById('item-id').value;
-          const payload = { id: id || null, name: document.getElementById('item-name').value, description: document.getElementById('item-description').value, quantity: document.getElementById('item-quantity').value, image: document.getElementById('item-image-base64').value };
-          showLoader(); const res = id ? await AppDB.updateItem(payload) : await AppDB.addItem(payload); hideLoader();
+          e.preventDefault(); 
+          const id = document.getElementById('item-id').value;
+          const payload = { 
+              id: id || null, 
+              name: document.getElementById('item-name').value, 
+              description: document.getElementById('item-description').value, 
+              quantity: document.getElementById('item-quantity').value, 
+              image: document.getElementById('item-image-base64').value 
+          };
+          showLoader(); 
+          const res = id ? await AppDB.updateItem(payload) : await AppDB.addItem(payload); 
+          hideLoader();
+          
           if(res.success) { 
               showAlert('บันทึกสำเร็จ!'); 
-              hideModal('item-form-modal'); showModal('manage-items-modal'); 
+              hideModal('item-form-modal'); 
+              showModal('manage-items-modal'); 
               await fetchAllData();
               if(document.getElementById('manage-items-modal').style.display === 'block') { renderManageItemsTable(); }
           }
       });
 
-      // ปุ่มเปิดสแกน QR แบบใหม่
       document.getElementById('scan-qr-btn').addEventListener('click', () => { 
         document.getElementById('qr-modal').style.display = "flex"; 
         startScanner(); 
       });
-      // ปุ่มปิดสแกน QR แบบใหม่
       document.getElementById('close-qr-btn').addEventListener('click', () => { 
         stopScanner(); 
       });
@@ -830,6 +874,7 @@
             <th style="background-color: #3b82f6; color: white;">ผู้ยืม</th>
             <th style="background-color: #8b5cf6; color: white;">ชื่ออุปกรณ์</th>
             <th style="background-color: #f59e0b; color: white; text-align: center;">จำนวนยืม</th>
+            <th style="background-color: #ec4899; color: white; text-align: center;">จำนวนคืน</th>
             <th style="background-color: #10b981; color: white;">วันที่ยืม</th>
             <th style="background-color: #6366f1; color: white; text-align: center;">สถานะ</th>
             <th style="background-color: #14b8a6; color: white;">วันที่คืนจริง</th>
@@ -839,13 +884,23 @@
       
       history.forEach(h => {
           let badge = h.status === 'borrowed' ? '<span class="status-badge status-warning">กำลังยืม</span>' : '<span class="status-badge status-available">คืนแล้ว</span>';
+          
+          // คำนวณจำนวนที่คืนและที่ทิ้ง
+          let returnQtyDisplay = h.status === 'borrowed' ? '-' : (h.returnedQty !== undefined ? h.returnedQty : h.borrowQty);
+          let consumedVal = parseInt(h.consumedQty) || 0;
+          
+          if(h.status !== 'borrowed' && consumedVal > 0) {
+             returnQtyDisplay += ` <br><span style="font-size: 0.8em; color: var(--danger);">(ทิ้ง ${consumedVal})</span>`;
+          }
+
           html += `<tr>
             <td>${h.borrowerName}</td>
             <td>${h.itemName}</td>
             <td style="text-align: center;">${h.borrowQty}</td>
+            <td style="text-align: center;">${returnQtyDisplay}</td>
             <td>${h.borrowDate}</td>
             <td style="text-align: center;">${badge}</td>
-            <td>${h.actualReturnDate}</td>
+            <td>${h.actualReturnDate || '-'}</td>
           </tr>`;
       });
       container.innerHTML = html + `</tbody></table>`;
@@ -856,10 +911,13 @@
       const element = document.getElementById('usage-stats-container');
       const tableContainer = element.querySelector('.table-container');
       const pdfBtn = element.querySelector('button');
+      const searchBar = element.querySelector('.search-bar'); // ดึงกล่องค้นหามาเพื่อซ่อนตอนปรินท์
       const originalMaxHeight = tableContainer.style.maxHeight;
       const originalOverflow = tableContainer.style.overflow;
       
       if (pdfBtn) pdfBtn.style.visibility = 'hidden';
+      if (searchBar) searchBar.style.display = 'none'; // ซ่อนตอนแคปหน้าจอ
+      
       tableContainer.style.maxHeight = 'none'; tableContainer.style.overflow = 'visible';
       
       const opt = { 
@@ -872,11 +930,13 @@
         html2pdf().set(opt).from(element).save().then(() => {
           tableContainer.style.maxHeight = originalMaxHeight; tableContainer.style.overflow = originalOverflow;
           if (pdfBtn) pdfBtn.style.visibility = 'visible';
+          if (searchBar) searchBar.style.display = 'block'; // นำกล่องค้นหากลับมา
           hideLoader(); showAlert('ดาวน์โหลดสถิติสำเร็จ!');
         }).catch(err => {
           console.error("PDF Export Error:", err);
           tableContainer.style.maxHeight = originalMaxHeight; tableContainer.style.overflow = originalOverflow;
           if (pdfBtn) pdfBtn.style.visibility = 'visible';
+          if (searchBar) searchBar.style.display = 'block';
           hideLoader(); showAlert('เกิดข้อผิดพลาดในการดาวน์โหลด PDF', 'error');
         });
       }, 300);
@@ -968,16 +1028,9 @@
     }
 
     function playScanAlert() {
-      // เล่นเสียง Beep
       const sound = document.getElementById('beep-sound');
-      if (sound) {
-        sound.currentTime = 0;
-        sound.play().catch(err => console.log("Sound autoplay prevented:", err));
-      }
-      // สั่นมือถือ (สั่นสั้นๆ 1 ครั้ง 150ms)
-      if (navigator.vibrate) {
-        navigator.vibrate(150);
-      }
+      if (sound) { sound.currentTime = 0; sound.play().catch(err => console.log("Sound autoplay prevented:", err)); }
+      if (navigator.vibrate) { navigator.vibrate(150); }
     }
 
     function onScanSuccess(decodedText) {
