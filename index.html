@@ -999,23 +999,37 @@
     }
 
     function startScanner() {
-      html5QrCode = new Html5Qrcode("reader");
+      // 1. จำกัดให้สแกนเฉพาะ QR Code เท่านั้น (ช่วยลดภาระการประมวลผล ทำให้สแกนติดไวขึ้นมาก)
+      html5QrCode = new Html5Qrcode("reader", { 
+          formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] 
+      });
       
       const screenWidth = window.innerWidth;
-      const boxSize = screenWidth < 600 ? 250 : 300; 
+      // 2. ปรับขนาดกรอบสแกนให้ใหญ่ขึ้นอีกนิด เพื่อให้เล็งง่ายขึ้น
+      const boxSize = screenWidth < 600 ? 280 : 350; 
+
+      // 3. บังคับตั้งค่ากล้องให้เน้นกล้องหลัง, ขอความละเอียดสูง (HD) 
+      const cameraConfig = { 
+        facingMode: "environment",
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        advanced: [{ focusMode: "continuous" }] // พยายามบังคับ Auto Focus (รองรับในมือถือบางรุ่น)
+      };
 
       html5QrCode.start(
-        { facingMode: "environment" }, 
+        cameraConfig, 
         { 
-          fps: 30, 
+          // 4. ลด FPS ลงเหลือ 10-15 (จาก 30) เพื่อไม่ให้ภาพเบลอเวลาขยับมือถือ
+          fps: 15, 
           qrbox: { width: boxSize, height: boxSize },
-          aspectRatio: window.innerHeight / window.innerWidth
+          aspectRatio: window.innerHeight / window.innerWidth,
+          disableFlip: false 
         }, 
         onScanSuccess, 
         onScanFailure
       ).catch((err) => { 
         console.error(err);
-        showAlert("กรุณาให้สิทธิ์เข้าถึงกล้องถ่ายรูป", "error"); 
+        showAlert("ไม่สามารถเปิดกล้องได้ หรือยังไม่ได้รับสิทธิ์เข้าถึง", "error"); 
         document.getElementById('qr-modal').style.display = "none";
       });
     }
