@@ -1033,17 +1033,34 @@
       if (navigator.vibrate) { navigator.vibrate(150); }
     }
 
+    // ฟังก์ชันที่ทำการแก้ไขแล้ว
     function onScanSuccess(decodedText) {
       playScanAlert();
       stopScanner();
       const scannedId = decodedText.trim();
-      const item = window.allItems.find(i => i.id == scannedId || i.name.toLowerCase() == scannedId.toLowerCase());
+      
+      // ค้นหาข้อมูลจาก Data แบบเป๊ะๆ
+      const item = window.allItems.find(i => String(i.id) === scannedId || String(i.name).toLowerCase() === scannedId.toLowerCase());
+      
       if (item) {
          showView('items-view');
-         const searchInput = document.getElementById('search-input'); searchInput.value = item.name; searchInput.dispatchEvent(new Event('input'));
-         if (item.availableQuantity > 0) { showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success'); } 
-         else { showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning'); }
-      } else { showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error'); }
+         const searchInput = document.getElementById('search-input'); 
+         searchInput.value = item.name; 
+         
+         // ปิด Event ปกติ แล้วเขียนเงื่อนไขให้โชว์เฉพาะการ์ดที่ชื่อตรงกันเป๊ะๆ (Exact Match)
+         document.querySelectorAll('.item-card').forEach(card => {
+           const title = card.querySelector('h3').textContent.trim().toLowerCase();
+           card.style.display = (title === String(item.name).toLowerCase()) ? 'flex' : 'none';
+         });
+
+         if (item.availableQuantity > 0) { 
+             showAlert(`พบอุปกรณ์ "${item.name}"\nระบุจำนวนและกดใส่ตะกร้าได้เลยครับ`, 'success'); 
+         } else { 
+             showAlert(`พบอุปกรณ์ "${item.name}"\nแต่ขณะนี้ของในสต็อกหมดชั่วคราว`, 'warning'); 
+         }
+      } else { 
+          showAlert(`ไม่พบข้อมูลอุปกรณ์ หรือ QR Code ไม่ถูกต้อง`, 'error'); 
+      }
     }
     
     function onScanFailure() {}
