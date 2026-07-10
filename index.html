@@ -1000,23 +1000,40 @@
 
     function startScanner() {
       html5QrCode = new Html5Qrcode("reader");
-      
-      const screenWidth = window.innerWidth;
-      const boxSize = screenWidth < 600 ? 250 : 300; 
+
+      const config = {
+        fps: 15,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+          let qrboxSize = Math.floor(minEdgeSize * 0.75);
+          return { width: qrboxSize, height: qrboxSize };
+        },
+        videoConstraints: {
+          facingMode: "environment",
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+          advanced: [{ focusMode: "continuous" }]
+        }
+      };
 
       html5QrCode.start(
         { facingMode: "environment" }, 
-        { 
-          fps: 30, 
-          qrbox: { width: boxSize, height: boxSize },
-          aspectRatio: window.innerHeight / window.innerWidth
-        }, 
+        config, 
         onScanSuccess, 
         onScanFailure
       ).catch((err) => { 
-        console.error(err);
-        showAlert("กรุณาให้สิทธิ์เข้าถึงกล้องถ่ายรูป", "error"); 
-        document.getElementById('qr-modal').style.display = "none";
+        console.warn("ไม่สามารถเปิดโหมดความละเอียดสูงได้ จะพยายามเปิดโหมดปกติแทน...", err);
+        
+        html5QrCode.start(
+          { facingMode: "environment" }, 
+          { fps: 10, qrbox: { width: 250, height: 250 } }, 
+          onScanSuccess, 
+          onScanFailure
+        ).catch((e) => {
+          console.error(e);
+          showAlert("กรุณาให้สิทธิ์เข้าถึงกล้องถ่ายรูปในการตั้งค่าเบราว์เซอร์", "error"); 
+          document.getElementById('qr-modal').style.display = "none";
+        });
       });
     }
 
@@ -1033,13 +1050,11 @@
       if (navigator.vibrate) { navigator.vibrate(150); }
     }
 
-    // ฟังก์ชันที่ทำการแก้ไขแล้ว
     function onScanSuccess(decodedText) {
       playScanAlert();
       stopScanner();
       const scannedId = decodedText.trim();
       
-      // ค้นหาข้อมูลจาก Data แบบเป๊ะๆ
       const item = window.allItems.find(i => String(i.id) === scannedId || String(i.name).toLowerCase() === scannedId.toLowerCase());
       
       if (item) {
@@ -1047,7 +1062,6 @@
          const searchInput = document.getElementById('search-input'); 
          searchInput.value = item.name; 
          
-         // ปิด Event ปกติ แล้วเขียนเงื่อนไขให้โชว์เฉพาะการ์ดที่ชื่อตรงกันเป๊ะๆ (Exact Match)
          document.querySelectorAll('.item-card').forEach(card => {
            const title = card.querySelector('h3').textContent.trim().toLowerCase();
            card.style.display = (title === String(item.name).toLowerCase()) ? 'flex' : 'none';
