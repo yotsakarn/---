@@ -890,7 +890,7 @@
           let consumedVal = parseInt(h.consumedQty) || 0;
           
           if(h.status !== 'borrowed' && consumedVal > 0) {
-             returnQtyDisplay += ` <br><span style="font-size: 0.8em; color: var(--danger);">(ทิ้ง ${consumedVal})</span>`;
+             returnQtyDisplay += ` <br><span style="font-size: 0.8em; color: var(--danger);">(ใช้ไป ${consumedVal})</span>`;
           }
 
           html += `<tr>
