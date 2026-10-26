@@ -611,7 +611,7 @@
 
       document.getElementById('item-image-upload').addEventListener('change', function(e) {
           const file = e.target.files[0]; 
-          if (!file || file.size > 250 * 1024) { showAlert('ขนาดไฟล์ห้ามเกิน 1000KB', 'warning'); return; }
+          if (!file || file.size > 1000 * 1024) { showAlert('ขนาดไฟล์ห้ามเกิน 1000KB', 'warning'); return; }
           const r = new FileReader(); 
           r.onload = function(ev) { 
               document.getElementById('item-image-base64').value = ev.target.result; 
